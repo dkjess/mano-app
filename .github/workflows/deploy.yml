@@ -1,0 +1,76 @@
+name: Deploy to Supabase
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+  SUPABASE_PROJECT_ID: zfroutbzdkhivnpiezho
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Run Tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.37.x
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ./backend
+        run: npm run test
+
+      - name: Check TypeScript compilation
+        working-directory: ./backend
+        run: deno check supabase/functions/*/index.ts
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    name: Deploy to Production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Supabase Link
+        working-directory: ./backend
+        run: supabase link --project-ref $SUPABASE_PROJECT_ID
+
+      - name: Deploy database migrations
+        working-directory: ./backend
+        run: supabase db push
+
+      - name: Deploy Edge Functions
+        working-directory: ./backend
+        run: supabase functions deploy --no-verify-jwt
+
+      - name: Verify deployment
+        working-directory: ./backend
+        run: |
+          echo "✅ Deployment completed successfully!"
+          echo "📊 Functions deployed:"
+          supabase functions list
