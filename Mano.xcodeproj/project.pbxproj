@@ -6,6 +6,15 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		C86305FC2E64E02D0011C15F /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = C86305FB2E64E02D0011C15F /* Supabase */; };
+		C8B547352E64DB39008C5A75 /* Auth in Frameworks */ = {isa = PBXBuildFile; productRef = C8B547342E64DB39008C5A75 /* Auth */; };
+		C8B547372E64DB39008C5A75 /* Functions in Frameworks */ = {isa = PBXBuildFile; productRef = C8B547362E64DB39008C5A75 /* Functions */; };
+		C8B547392E64DB39008C5A75 /* PostgREST in Frameworks */ = {isa = PBXBuildFile; productRef = C8B547382E64DB39008C5A75 /* PostgREST */; };
+		C8B5473B2E64DB39008C5A75 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = C8B5473A2E64DB39008C5A75 /* Realtime */; };
+		C8B5473D2E64DB39008C5A75 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = C8B5473C2E64DB39008C5A75 /* Storage */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		C86303672E64A9A50011C15F /* Mano.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mano.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +32,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8B547392E64DB39008C5A75 /* PostgREST in Frameworks */,
+				C8B547372E64DB39008C5A75 /* Functions in Frameworks */,
+				C86305FC2E64E02D0011C15F /* Supabase in Frameworks */,
+				C8B547352E64DB39008C5A75 /* Auth in Frameworks */,
+				C8B5473D2E64DB39008C5A75 /* Storage in Frameworks */,
+				C8B5473B2E64DB39008C5A75 /* Realtime in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -33,6 +48,7 @@
 			isa = PBXGroup;
 			children = (
 				C86303692E64A9A50011C15F /* Mano */,
+				C86305FA2E64E02D0011C15F /* Frameworks */,
 				C86303682E64A9A50011C15F /* Products */,
 			);
 			sourceTree = "<group>";
@@ -43,6 +59,13 @@
 				C86303672E64A9A50011C15F /* Mano.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		C86305FA2E64E02D0011C15F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -65,6 +88,12 @@
 			);
 			name = Mano;
 			packageProductDependencies = (
+				C8B547342E64DB39008C5A75 /* Auth */,
+				C8B547362E64DB39008C5A75 /* Functions */,
+				C8B547382E64DB39008C5A75 /* PostgREST */,
+				C8B5473A2E64DB39008C5A75 /* Realtime */,
+				C8B5473C2E64DB39008C5A75 /* Storage */,
+				C86305FB2E64E02D0011C15F /* Supabase */,
 			);
 			productName = Mano;
 			productReference = C86303672E64A9A50011C15F /* Mano.app */;
@@ -94,6 +123,9 @@
 			);
 			mainGroup = C863035E2E64A9A50011C15F;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = C86303682E64A9A50011C15F /* Products */;
 			projectDirPath = "";
@@ -246,6 +278,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZJRL7SVU3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -260,10 +293,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.supermano.Mano;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -288,6 +321,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZJRL7SVU3;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
@@ -302,10 +336,10 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = ai.supermano.Mano;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -345,6 +379,50 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.5.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		C86305FB2E64E02D0011C15F /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Supabase;
+		};
+		C8B547342E64DB39008C5A75 /* Auth */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Auth;
+		};
+		C8B547362E64DB39008C5A75 /* Functions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Functions;
+		};
+		C8B547382E64DB39008C5A75 /* PostgREST */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = PostgREST;
+		};
+		C8B5473A2E64DB39008C5A75 /* Realtime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Realtime;
+		};
+		C8B5473C2E64DB39008C5A75 /* Storage */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = C8B547332E64DB39008C5A75 /* XCRemoteSwiftPackageReference "supabase-swift" */;
+			productName = Storage;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = C863035F2E64A9A50011C15F /* Project object */;
 }

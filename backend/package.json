@@ -1,0 +1,39 @@
+{
+  "name": "mano-backend",
+  "description": "Unified backend services for the Mano AI-powered management assistant",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "supabase functions serve --env-file .env.local",
+    "start": "supabase start",
+    "stop": "supabase stop",
+    "reset": "supabase db reset",
+    "setup": "./scripts/dev-setup.sh",
+    "seed:dev": "npx tsx scripts/seed-test-user.ts",
+    "test": "cd tests && deno test --allow-all",
+    "test:watch": "cd tests && deno test --allow-all --watch",
+    "test:coverage": "cd tests && deno test --allow-all --coverage=coverage",
+    "test:integration": "npx tsx scripts/test-functions.ts",
+    "deploy": "supabase functions deploy",
+    "logs": "supabase functions logs",
+    "migration:new": "supabase migration new",
+    "migration:up": "supabase migration up"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.53.0",
+    "@supabase/supabase-js": "latest",
+    "dotenv": "^16.5.0",
+    "node-fetch": "^3.3.2",
+    "posthog-node": "^5.5.1",
+    "supabase": "^2.24.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "prettier": "^3.5.3",
+    "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}

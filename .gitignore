@@ -1,0 +1,21 @@
+# Xcode
+.DS_Store
+build/
+DerivedData/
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+*.xcuserstate
+*.xcscmblueprint
+*.xccheckout
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+
+# Supabase
+mano-backend/.env.local
+mano-backend/.envbackend/node_modules/

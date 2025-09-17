@@ -1,0 +1,114 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.changes.outputs.backend }}
+      ios: ${{ steps.changes.outputs.ios }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Check for backend changes
+      id: changes
+      uses: dorny/paths-filter@v3
+      with:
+        filters: |
+          backend:
+            - 'backend/**'
+          ios:
+            - 'Mano/**'
+            - 'ManoTests/**'
+            - 'ManoUITests/**'
+            - 'Mano.xcodeproj/**'
+            - '.github/workflows/ios-tests.yml'
+
+  backend-tests:
+    name: Backend Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
+    uses: ./.github/workflows/backend-tests.yml
+
+  ios-tests:
+    name: iOS Tests
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ios == 'true'
+    uses: ./.github/workflows/ios-tests.yml
+
+  quality-gates:
+    name: Quality Gates
+    runs-on: ubuntu-latest
+    needs: [detect-changes, backend-tests, ios-tests]
+    if: always()
+    
+    steps:
+    - name: Check backend test results
+      if: needs.detect-changes.outputs.backend == 'true' && needs.backend-tests.result != 'success'
+      run: |
+        echo "Backend tests failed!"
+        exit 1
+    
+    - name: Check iOS test results
+      if: needs.detect-changes.outputs.ios == 'true' && needs.ios-tests.result != 'success'
+      run: |
+        echo "iOS tests failed!"
+        exit 1
+    
+    - name: All tests passed
+      run: |
+        echo "All required tests have passed!"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Run CodeQL Analysis
+      uses: github/codeql-action/init@v3
+      with:
+        languages: typescript, swift
+        queries: security-extended
+    
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+    
+    - name: Run dependency scan
+      uses: actions/dependency-review-action@v4
+      if: github.event_name == 'pull_request'
+
+  deployment-ready:
+    name: Deployment Ready
+    runs-on: ubuntu-latest
+    needs: [quality-gates, security-scan]
+    if: always() && github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Check if deployment is safe
+      if: needs.quality-gates.result == 'success' && (needs.security-scan.result == 'success' || needs.security-scan.result == 'skipped')
+      run: |
+        echo "✅ All quality gates passed - deployment ready!"
+        echo "deployment_ready=true" >> $GITHUB_OUTPUT
+      id: deploy_check
+    
+    - name: Block deployment
+      if: needs.quality-gates.result != 'success' || (needs.security-scan.result != 'success' && needs.security-scan.result != 'skipped')
+      run: |
+        echo "❌ Quality gates failed - blocking deployment"
+        echo "deployment_ready=false" >> $GITHUB_OUTPUT
+        exit 1
