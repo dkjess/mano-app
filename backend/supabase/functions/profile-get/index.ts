@@ -98,7 +98,7 @@ serve(async (req) => {
             });
 
             const teamContext = teamMembers && teamMembers.length > 0 
-              ? `Team context: ${teamMembers.map(p => `${p.name} (${p.role || 'role unknown'}, ${p.relationship_type})`).join(', ')}`
+              ? `Team context: ${teamMembers.map((p: any) => `${p.name} (${p.role || 'role unknown'}, ${p.relationship_type})`).join(', ')}`
               : 'First team member being added';
 
             const managerContext = userProfile?.call_name 
@@ -145,8 +145,8 @@ Write in a professional, helpful tone that provides useful context for managemen
             });
 
             const textContent = response.content.find(block => block.type === 'text');
-            if (textContent?.text) {
-              content = textContent.text;
+            if ((textContent as any)?.text) {
+              content = (textContent as any).text;
               console.log('✅ Generated AI profile for:', personData.name);
             }
           }
@@ -188,7 +188,7 @@ Write in a professional, helpful tone that provides useful context for managemen
   } catch (error) {
     console.error('Error in profile-get function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as any).message }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

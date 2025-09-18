@@ -98,11 +98,11 @@ Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) {
+      if (!(textContent as any)?.text) {
         throw new Error('No analysis from learning system');
       }
 
-      const analysis = JSON.parse(textContent.text);
+      const analysis = JSON.parse((textContent as any).text);
       
       console.log('🧠 Learning analysis completed:', {
         themes: analysis.themes?.length || 0,
@@ -231,7 +231,7 @@ Respond in JSON format:
         }
       }
 
-      return insights.sort((a, b) => b.relevance_score - a.relevance_score);
+      return insights.sort((a: any, b: any) => b.relevance_score - a.relevance_score);
 
     } catch (error) {
       console.error('Failed to get learning insights:', error);
@@ -288,11 +288,11 @@ Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) {
+      if (!(textContent as any)?.text) {
         return null;
       }
 
-      const insightData = JSON.parse(textContent.text);
+      const insightData = JSON.parse((textContent as any).text);
       
       return {
         pattern,

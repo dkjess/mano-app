@@ -51,8 +51,8 @@ serve(async (req) => {
     } catch (fetchError) {
       clearTimeout(timeoutId)
       console.error('Fetch error:', fetchError)
-      console.error('Error name:', fetchError.name)
-      console.error('Error message:', fetchError.message)
+      console.error('Error name:', (fetchError as any).name)
+      console.error('Error message:', (fetchError as any).message)
     }
 
     // Test 3: Actual embedding call with minimal payload
@@ -88,8 +88,8 @@ serve(async (req) => {
     } catch (embeddingError) {
       clearTimeout(embeddingTimeoutId)
       console.error('Embedding fetch error:', embeddingError)
-      console.error('Error name:', embeddingError.name)
-      console.error('Error message:', embeddingError.message)
+      console.error('Error name:', (embeddingError as any).name)
+      console.error('Error message:', (embeddingError as any).message)
     }
 
     // Test 4: Test VectorService directly
@@ -112,8 +112,8 @@ serve(async (req) => {
       
     } catch (vectorError) {
       console.error('VectorService test error:', vectorError)
-      console.error('Error name:', vectorError.name)
-      console.error('Error message:', vectorError.message)
+      console.error('Error name:', (vectorError as any).name)
+      console.error('Error message:', (vectorError as any).message)
     }
 
     // Return results
@@ -130,7 +130,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Test function error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as any).message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

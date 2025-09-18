@@ -135,7 +135,7 @@ export class EmbeddingJob {
 
       // Generate summary content
       const conversationText = messages
-        .map(m => `${m.is_user ? 'Manager' : 'Mano'}: ${m.content}`)
+        .map((m: any) => `${m.is_user ? 'Manager' : 'Mano'}: ${m.content}`)
         .join('\n');
 
       const summary = this.extractConversationThemes(conversationText);

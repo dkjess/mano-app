@@ -238,7 +238,7 @@ export class ConversationIntelligence {
   // Helper methods
   private getPersonName(personId: string, people: any[]): string {
     if (personId === 'general') return 'your general management discussions';
-    const person = people.find(p => p.id === personId);
+    const person = people.find((p: any) => p.id === personId);
     return person?.name || 'unknown person';
   }
 
@@ -295,11 +295,11 @@ export class ConversationIntelligence {
   private findLongContactGaps(people: any[]): any[] {
     const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     return people
-      .filter(person => {
+      .filter((person: any) => {
         if (!person.last_contact) return true;
         return new Date(person.last_contact) < weekAgo;
       })
-      .sort((a, b) => {
+      .sort((a: any, b: any) => {
         const aDate = a.last_contact ? new Date(a.last_contact) : new Date(0);
         const bDate = b.last_contact ? new Date(b.last_contact) : new Date(0);
         return aDate.getTime() - bDate.getTime();

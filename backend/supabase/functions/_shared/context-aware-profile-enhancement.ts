@@ -250,11 +250,11 @@ If the user response is unclear, vague, or says they don't know, set extractedVa
     });
 
     const textContent = response.content.find((block: any) => block.type === 'text');
-    if (!textContent?.text) {
+    if (!(textContent as any)?.text) {
       throw new Error('No response from AI extraction');
     }
 
-    const result = JSON.parse(textContent.text);
+    const result = JSON.parse((textContent as any).text);
     
     // Ensure required fields
     return {

@@ -146,7 +146,7 @@ Respond with only the expanded query (no explanations):`;
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      return textContent?.text?.trim() || context.query;
+      return (textContent as any)?.text?.trim() || context.query;
       
     } catch (error) {
       console.error('Failed to expand query:', error);
@@ -190,7 +190,7 @@ Respond with only the expanded query (no explanations):`;
     }
     
     // Sort by enhanced relevance score
-    return enhancedResults.sort((a, b) => b.relevance_score - a.relevance_score);
+    return enhancedResults.sort((a: any, b: any) => b.relevance_score - a.relevance_score);
   }
 
   /**
@@ -239,11 +239,11 @@ Respond in JSON format:
     });
 
     const textContent = response.content.find(block => block.type === 'text');
-    if (!textContent?.text) {
+    if (!(textContent as any)?.text) {
       throw new Error('No relevance analysis returned');
     }
 
-    const analysis = JSON.parse(textContent.text);
+    const analysis = JSON.parse((textContent as any).text);
     
     return {
       relevance_score: Math.min(analysis.relevance_score || result.similarity, 1.0),
@@ -363,9 +363,9 @@ Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return [];
+      if (!(textContent as any)?.text) return [];
 
-      const analysis = JSON.parse(textContent.text);
+      const analysis = JSON.parse((textContent as any).text);
       
       return (analysis.patterns || []).map((pattern: any) => ({
         ...pattern,

@@ -30,8 +30,8 @@ export async function detectNewPeopleInMessage(
 
     // Final filtering and confidence adjustment
     const finalPeople = validatedPeople
-      .filter(person => person.confidence >= 0.6)
-      .sort((a, b) => b.confidence - a.confidence);
+      .filter((person: any) => person.confidence >= 0.6)
+      .sort((a: any, b: any) => b.confidence - a.confidence);
 
     return {
       detectedPeople: finalPeople,
@@ -139,7 +139,7 @@ async function validateWithPatterns(
   potentialPeople: DetectedPerson[]
 ): Promise<DetectedPerson[]> {
   // Enhanced pattern-based validation for fallback
-  return potentialPeople.filter(person => {
+  return potentialPeople.filter((person: any) => {
     const name = person.name.toLowerCase();
     
     // Additional validation rules

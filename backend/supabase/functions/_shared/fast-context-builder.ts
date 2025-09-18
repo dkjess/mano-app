@@ -102,7 +102,7 @@ export class FastContextBuilder {
       }
     } catch (error) {
       console.error('❌ Fast context building failed:', error)
-      throw new Error(`Context building failed: ${error.message}`)
+      throw new Error(`Context building failed: ${(error as any).message}`)
     }
   }
 
@@ -287,7 +287,7 @@ export class FastContextBuilder {
 
     return Object.entries(themeCounts)
       .map(([theme, frequency]) => ({ theme, frequency, people_mentioned: [], last_mentioned: new Date().toISOString(), examples: [] }))
-      .sort((a, b) => b.frequency - a.frequency)
+      .sort((a: any, b: any) => b.frequency - a.frequency)
   }
 
   private getMostDiscussedPeople(messages: any[]): string[] {

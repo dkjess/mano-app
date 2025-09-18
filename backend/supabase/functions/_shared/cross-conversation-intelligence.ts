@@ -160,12 +160,12 @@ export class CrossConversationIntelligence {
       
       // Get conversation content for analysis
       const personAContent = personAMessages
-        .map(m => m.content)
+        .map((m: any) => m.content)
         .join(' ')
         .substring(0, 2000); // Limit content for API
         
       const personBContent = personBMessages
-        .map(m => m.content)
+        .map((m: any) => m.content)
         .join(' ')
         .substring(0, 2000);
 
@@ -224,9 +224,9 @@ If no meaningful connection exists, respond: {"has_connection": false}`;
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return null;
+      if (!(textContent as any)?.text) return null;
 
-      const analysis = JSON.parse(textContent.text);
+      const analysis = JSON.parse((textContent as any).text);
       
       if (!analysis.has_connection) return null;
       
@@ -301,9 +301,9 @@ If no meaningful thematic connection exists, respond: {"has_thematic_connection"
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return null;
+      if (!(textContent as any)?.text) return null;
 
-      const analysis = JSON.parse(textContent.text);
+      const analysis = JSON.parse((textContent as any).text);
       
       if (!analysis.has_thematic_connection || analysis.connection_strength < 0.6) {
         return null;
@@ -408,9 +408,9 @@ Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return [];
+      if (!(textContent as any)?.text) return [];
 
-      const analysis = JSON.parse(textContent.text);
+      const analysis = JSON.parse((textContent as any).text);
       return analysis.team_dynamics || [];
       
     } catch (error) {
@@ -463,7 +463,7 @@ Respond in JSON format:
         });
       }
       
-      return insights.sort((a, b) => b.confidence_score - a.confidence_score);
+      return insights.sort((a: any, b: any) => b.confidence_score - a.confidence_score);
       
     } catch (error) {
       console.error('Failed to get cross-conversation insights:', error);

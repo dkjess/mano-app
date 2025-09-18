@@ -71,7 +71,7 @@ export class ProactiveInsightsSystem {
       
       // Sort by relevance and priority
       return insights
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
           const priorityWeight = { high: 3, medium: 2, low: 1 };
           const aPriority = priorityWeight[a.priority] || 1;
           const bPriority = priorityWeight[b.priority] || 1;
@@ -102,8 +102,8 @@ export class ProactiveInsightsSystem {
         .gte('created_at', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
         .order('created_at', { ascending: false });
 
-      const recentContactIds = new Set(recentMessages?.map(m => m.person_id) || []);
-      const inactivePeople = managementContext.people?.filter(person => 
+      const recentContactIds = new Set(recentMessages?.map((m: any) => m.person_id) || []);
+      const inactivePeople = managementContext.people?.filter((person: any) => 
         !recentContactIds.has(person.id) && person.id !== 'general'
       ) || [];
 
@@ -169,9 +169,9 @@ Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return null;
+      if (!(textContent as any)?.text) return null;
 
-      const data = JSON.parse(textContent.text);
+      const data = JSON.parse((textContent as any).text);
       
       return {
         id: `starter_${person.id}_${Date.now()}`,
@@ -222,7 +222,7 @@ Respond in JSON format:
       // Look for conversations that mentioned actions, commitments, or follow-ups
       const actionKeywords = ['follow up', 'check in', 'next week', 'will do', 'action', 'commit', 'plan to'];
       
-      const actionConversations = recentConversations.filter(conv => 
+      const actionConversations = recentConversations.filter((conv: any) => 
         actionKeywords.some(keyword => 
           conv.content.toLowerCase().includes(keyword)
         )
@@ -287,9 +287,9 @@ If no follow-up needed, respond: {"needs_followup": false}`;
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return null;
+      if (!(textContent as any)?.text) return null;
 
-      const data = JSON.parse(textContent.text);
+      const data = JSON.parse((textContent as any).text);
       
       if (!data.needs_followup) return null;
       
@@ -391,9 +391,9 @@ Generate 1-2 high-value team insights. Respond in JSON format:
       });
 
       const textContent = response.content.find(block => block.type === 'text');
-      if (!textContent?.text) return insights;
+      if (!(textContent as any)?.text) return insights;
 
-      const data = JSON.parse(textContent.text);
+      const data = JSON.parse((textContent as any).text);
       
       for (const [index, insight] of (data.insights || []).entries()) {
         insights.push({
@@ -422,7 +422,7 @@ Generate 1-2 high-value team insights. Respond in JSON format:
    */
   async getPersonSpecificInsights(personId: string, managementContext: any): Promise<ProactiveInsight[]> {
     try {
-      const person = managementContext.people?.find(p => p.id === personId);
+      const person = managementContext.people?.find((p: any) => p.id === personId);
       if (!person) return [];
 
       const insights: ProactiveInsight[] = [];
@@ -457,7 +457,7 @@ Generate 1-2 high-value team insights. Respond in JSON format:
         });
       }
 
-      return insights.sort((a, b) => b.relevance_score - a.relevance_score);
+      return insights.sort((a: any, b: any) => b.relevance_score - a.relevance_score);
       
     } catch (error) {
       console.error('Failed to get person-specific insights:', error);

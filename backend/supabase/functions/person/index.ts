@@ -368,7 +368,7 @@ async function handlePersonUpdate(req: Request, supabase: any, user: any, person
     })
   } catch (error) {
     console.error('❌ Unexpected error in handlePersonUpdate:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: (error as any).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })
@@ -461,7 +461,7 @@ async function handlePersonDelete(supabase: any, user: any, personId: string) {
     })
   } catch (error) {
     console.error('❌ Unexpected error in handlePersonDelete:', error)
-    return new Response(JSON.stringify({ error: 'Internal server error', details: error.message }), {
+    return new Response(JSON.stringify({ error: 'Internal server error', details: (error as any).message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     })

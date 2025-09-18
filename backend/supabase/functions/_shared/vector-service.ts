@@ -30,12 +30,12 @@ export class VectorService {
       
       // Generate embedding using Supabase built-in AI inference
       // Create session if not exists (reuse across calls for performance)
-      if (!globalThis.vectorEmbeddingSession) {
+      if (!(globalThis as any).vectorEmbeddingSession) {
         console.log('🔧 VectorService: Creating new AI embedding session...')
-        globalThis.vectorEmbeddingSession = new Supabase.ai.Session('gte-small')
+        (globalThis as any).vectorEmbeddingSession = new (Supabase as any).ai.Session('gte-small')
       }
       
-      const embedding = await globalThis.vectorEmbeddingSession.run(text, {
+      const embedding = await (globalThis as any).vectorEmbeddingSession.run(text, {
         mean_pool: true,
         normalize: true
       })

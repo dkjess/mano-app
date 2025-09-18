@@ -50,8 +50,8 @@ export async function detectNewPeopleWithContext(
 
     // Final filtering based on confidence and context relevance
     const finalPeople = validatedPeople
-      .filter(person => person.confidence >= 0.7) // Higher threshold with context
-      .sort((a, b) => b.confidence - a.confidence);
+      .filter((person: any) => person.confidence >= 0.7) // Higher threshold with context
+      .sort((a: any, b: any) => b.confidence - a.confidence);
 
     return {
       detectedPeople: finalPeople,
@@ -120,7 +120,7 @@ async function extractPotentialPeopleWithContext(
     index === self.findIndex(p => p.name === person.name)
   );
 
-  return uniquePeople.sort((a, b) => b.confidence - a.confidence);
+  return uniquePeople.sort((a: any, b: any) => b.confidence - a.confidence);
 }
 
 /**
@@ -149,7 +149,7 @@ async function validatePeopleWithContext(
 "${message}"
 
 **Potential people detected:**
-${potentialPeople.map(p => `- ${p.name} (context: "${p.context}", suggested role: ${p.role || 'unknown'}, suggested relationship: ${p.relationshipType || 'unknown'})`).join('\n')}
+${potentialPeople.map((p: any) => `- ${p.name} (context: "${p.context}", suggested role: ${p.role || 'unknown'}, suggested relationship: ${p.relationshipType || 'unknown'})`).join('\n')}
 
 **Current team context:**
 - Team size: ${teamSize} people
@@ -191,23 +191,23 @@ Only include people with scores 6 or higher.`;
       messages: [
         {
           role: 'user',
-          content: `Validate these potential people: ${potentialPeople.map(p => p.name).join(', ')}`
+          content: `Validate these potential people: ${potentialPeople.map((p: any) => p.name).join(', ')}`
         }
       ]
     });
 
-    const textContent = response.content.find((block: any) => block.type === 'text');
-    if (!textContent?.text) {
+    const textContent = response.content.find((block: any) => block.type === 'text') as any;
+    if (!(textContent as any)?.text) {
       throw new Error('No response from AI validation');
     }
 
-    const validationResult = JSON.parse(textContent.text);
+    const validationResult = JSON.parse((textContent as any).text);
     
     // Apply validation results to potential people
     const validatedPeople: DetectedPerson[] = [];
     
     for (const validation of validationResult.validatedPeople) {
-      const originalPerson = potentialPeople.find(p => p.name === validation.name);
+      const originalPerson = potentialPeople.find((p: any) => p.name === validation.name);
       if (originalPerson && validation.score >= 6) {
         validatedPeople.push({
           ...originalPerson,

@@ -40,12 +40,12 @@ serve(async (req) => {
         
         // Generate embedding using Supabase built-in AI inference
         // Create session outside the loop for better performance
-        if (!globalThis.embeddingSession) {
+        if (!(globalThis as any).embeddingSession) {
           console.log('🔧 Creating new AI embedding session...')
-          globalThis.embeddingSession = new Supabase.ai.Session('gte-small')
+          (globalThis as any).embeddingSession = new (Supabase as any).ai.Session('gte-small')
         }
         
-        const embedding = await globalThis.embeddingSession.run(content, {
+        const embedding = await (globalThis as any).embeddingSession.run(content, {
           mean_pool: true,
           normalize: true
         })
@@ -72,7 +72,7 @@ serve(async (req) => {
         
       } catch (error) {
         console.error(`❌ Error creating embedding for message ${messageId}:`, error)
-        results.push({ messageId, success: false, error: error.message })
+        results.push({ messageId, success: false, error: (error as any).message })
       }
     }
 
@@ -90,7 +90,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Create embeddings function error:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as any).message }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

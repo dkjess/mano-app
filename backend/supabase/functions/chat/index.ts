@@ -302,7 +302,7 @@ async function processAttachments(attachments: Array<{name?: string; contentType
       
     } catch (error) {
       console.error('❌ PROCESS DEBUG: Error processing attachment:', attachment.name, error);
-      console.error('❌ PROCESS DEBUG: Error stack:', error.stack);
+      console.error('❌ PROCESS DEBUG: Error stack:', (error as any).stack);
       console.error('❌ PROCESS DEBUG: Attachment was:', JSON.stringify(attachment, null, 2));
       // Don't throw - just skip this attachment and continue
     }
@@ -753,8 +753,8 @@ async function handleStreamingChat({
         // If no messageId provided, get the most recent user message to find attached files
         if (!targetMessageId) {
           const latestMessage = conversationHistory
-            .filter(msg => msg.is_user)
-            .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+            .filter((msg: any) => msg.is_user)
+            .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
           targetMessageId = latestMessage?.id;
         }
         
@@ -829,7 +829,7 @@ async function handleStreamingChat({
       
       console.log('🔍 CONTEXT DEBUG: Raw context received:', {
         people_count: context.people?.length || 0,
-        people_names: context.people?.map(p => p.name) || [],
+        people_names: context.people?.map((p: any) => p.name) || [],
         team_size: context.team_size,
         conversation_patterns_count: context.conversation_patterns?.most_discussed_people?.length || 0
       })
@@ -846,7 +846,7 @@ async function handleStreamingChat({
       
       console.log('🔍 CONTEXT DEBUG: Final managementContext for prompt:', {
         people_count: managementContext.people?.length || 0,
-        people_sample: managementContext.people?.slice(0, 2)?.map(p => ({ name: p.name, role: p.role })) || []
+        people_sample: managementContext.people?.slice(0, 2)?.map((p: any) => ({ name: p.name, role: p.role })) || []
       })
     } catch (contextError) {
       console.error('❌ CRITICAL: Failed to gather enhanced management context:', contextError)
@@ -1292,7 +1292,7 @@ function createSuggestionFromItems(items: string[], personName: string, index: n
 
 // Helper function to format error messages
 function getErrorMessage(error: any): string {
-  const errorMessage = error.message || '';
+  const errorMessage = (error as any).message || '';
   
   // Check for rate limit errors
   if (errorMessage.includes('rate_limit_error') || errorMessage.includes('429')) {
@@ -1415,7 +1415,7 @@ async function saveAIResponseInBackground(
       if (!isTopicConversation && Deno.env.get('ANTHROPIC_API_KEY')) {
         const { detectNewPeopleWithContext } = await import('../_shared/context-aware-person-detection.ts')
 
-        const existingPeopleNames = managementContext.people?.map(p => p.name) || []
+        const existingPeopleNames = managementContext.people?.map((p: any) => p.name) || []
         const detectionResult = await detectNewPeopleWithContext(
           userMessage.trim(),
           existingPeopleNames,
@@ -1424,7 +1424,7 @@ async function saveAIResponseInBackground(
         )
 
         if (detectionResult.hasNewPeople) {
-          console.log('👥 Background: Person detection found new people:', detectionResult.detectedPeople.map(p => p.name))
+          console.log('👥 Background: Person detection found new people:', detectionResult.detectedPeople.map((p: any) => p.name))
         }
       }
     } catch (intelligenceError) {
@@ -1531,7 +1531,7 @@ serve(async (req) => {
             })));
           } catch (attachmentError) {
             console.error(`❌ ATTACHMENT DEBUG: Failed to process attachments:`, attachmentError);
-            console.error(`❌ ATTACHMENT DEBUG: Error stack:`, attachmentError.stack);
+            console.error(`❌ ATTACHMENT DEBUG: Error stack:`, (attachmentError as any).stack);
             throw attachmentError;
           }
         } else {
@@ -1549,7 +1549,7 @@ serve(async (req) => {
         // If we have processed files, append their content to the user message
         if (processedFiles.length > 0) {
           // Check if any files are large
-          const hasLargeFiles = processedFiles.some(f => f.isLarge);
+          const hasLargeFiles = processedFiles.some((f: any) => f.isLarge);
           
           if (hasLargeFiles) {
             // For large files, include the full content for immediate analysis
@@ -1988,7 +1988,7 @@ This will help you give better, more personalized advice in future conversations
         })
 
         const textContent = response.content.find(block => block.type === 'text')
-        claudeResponse = textContent?.text || 'Sorry, I had trouble generating a response.'
+        claudeResponse = (textContent as any)?.text || 'Sorry, I had trouble generating a response.'
         break
 
       } catch (error: any) {
@@ -2077,7 +2077,7 @@ This will help you give better, more personalized advice in future conversations
           .select('name')
           .eq('user_id', user.id)
         
-        const existingNames = existingPeople?.map(p => p.name) || []
+        const existingNames = existingPeople?.map((p: any) => p.name) || []
         
         // Use context-aware person detection with full management context
         const detectionResult = await detectNewPeopleWithContext(

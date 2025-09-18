@@ -55,8 +55,8 @@ export async function detectNewPeopleInMessage(
 
     // Step 3: Final filtering and confidence adjustment
     const finalPeople = validatedPeople
-      .filter(person => person.confidence >= 0.6)
-      .sort((a, b) => b.confidence - a.confidence);
+      .filter((person: any) => person.confidence >= 0.6)
+      .sort((a: any, b: any) => b.confidence - a.confidence);
 
     return {
       detectedPeople: finalPeople,
@@ -167,14 +167,14 @@ async function validateWithLLM(
   if (potentialPeople.length === 0) return [];
 
   // Check cache first
-  const cacheKey = `${message.slice(0, 100)}_${potentialPeople.map(p => p.name).join('_')}`;
+  const cacheKey = `${message.slice(0, 100)}_${potentialPeople.map((p: any) => p.name).join('_')}`;
   if (validationCache.has(cacheKey)) {
     const cached = validationCache.get(cacheKey)!;
     return potentialPeople.filter(p => p.name.toLowerCase() === cached.name.toLowerCase())
-      .map(p => ({ ...p, validationScore: cached.confidence }));
+      .map((p: any) => ({ ...p, validationScore: cached.confidence }));
   }
 
-  const names = potentialPeople.map(p => p.name);
+  const names = potentialPeople.map((p: any) => p.name);
   
   const prompt = `Analyze this conversation text and determine which of the following potential names actually refer to people (not companies, projects, places, products, or other entities).
 
@@ -248,7 +248,7 @@ function parseValidationResponse(
       const score = parseInt(match[2]);
       
       if (score >= 6) {
-        const originalPerson = potentialPeople.find(p => 
+        const originalPerson = potentialPeople.find((p: any) => 
           p.name.toLowerCase() === name.toLowerCase()
         );
         
@@ -271,7 +271,7 @@ async function validateWithPatterns(
   potentialPeople: DetectedPerson[]
 ): Promise<DetectedPerson[]> {
   // Enhanced pattern-based validation for fallback
-  return potentialPeople.filter(person => {
+  return potentialPeople.filter((person: any) => {
     const name = person.name.toLowerCase();
     
     // Additional validation rules

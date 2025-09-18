@@ -315,7 +315,7 @@ export class ManagementContextBuilder {
       
       // Sort by relevance score, then by recent contact
       return scoredPeople
-        .sort((a, b) => {
+        .sort((a: any, b: any) => {
           if (b.relevanceScore !== a.relevanceScore) {
             return b.relevanceScore - a.relevanceScore;
           }
@@ -428,7 +428,7 @@ export class ManagementContextBuilder {
     if (!messages) return [];
 
     // Extract themes from user messages (simplified - could use NLP)
-    const themes = this.extractThemesFromMessages(messages.map(m => m.content));
+    const themes = this.extractThemesFromMessages(messages.map((m: any) => m.content));
     return themes.slice(0, 3); // Top 3 themes
   }
 
@@ -508,7 +508,7 @@ export class ManagementContextBuilder {
     });
 
     return Array.from(themes.entries())
-      .sort((a, b) => b[1] - a[1])
+      .sort((a: any, b: any) => b[1] - a[1])
       .map(([theme]) => theme);
   }
 
@@ -552,7 +552,7 @@ export class ManagementContextBuilder {
         last_mentioned: data.lastMentioned,
         examples: data.examples
       }))
-      .sort((a, b) => b.frequency - a.frequency)
+      .sort((a: any, b: any) => b.frequency - a.frequency)
       .slice(0, 5); // Top 5 themes
   }
 
@@ -567,7 +567,7 @@ export class ManagementContextBuilder {
     };
 
     const challenges: string[] = [];
-    const messageText = messages.map(m => m.content.toLowerCase()).join(' ');
+    const messageText = messages.map((m: any) => m.content.toLowerCase()).join(' ');
 
     Object.entries(challengeKeywords).forEach(([challenge, keywords]) => {
       if (keywords.some(keyword => messageText.includes(keyword))) {
@@ -593,12 +593,12 @@ export class ManagementContextBuilder {
     });
 
     const mostDiscussed = Array.from(personMentions.entries())
-      .sort((a, b) => b[1] - a[1])
+      .sort((a: any, b: any) => b[1] - a[1])
       .slice(0, 5)
       .map(([personId]) => personId);
 
     // Extract trending topics (simplified)
-    const allContent = messages.map(m => m.content).join(' ');
+    const allContent = messages.map((m: any) => m.content).join(' ');
     const trendingTopics = this.extractThemesFromMessages([allContent]).slice(0, 5);
 
     return {
@@ -629,7 +629,7 @@ TEAM OVERVIEW:
 You manage ${team_size.direct_reports} direct reports, work with ${team_size.stakeholders} stakeholders, and coordinate with ${team_size.peers} peers.
 
 TEAM MEMBERS:
-${people.map(p => `- ${p.name}: ${p.role || 'No role specified'} (${p.relationship_type})${p.recent_themes?.length ? ` - Recent topics: ${p.recent_themes.join(', ')}` : ''}`).join('\n')}`;
+${people.map((p: any) => `- ${p.name}: ${p.role || 'No role specified'} (${p.relationship_type})${p.recent_themes?.length ? ` - Recent topics: ${p.recent_themes.join(', ')}` : ''}`).join('\n')}`;
 
   // Recent management themes
   const themesSection = recent_themes.length > 0 ? `
@@ -648,7 +648,7 @@ ${current_challenges.map(c => `- ${c}`).join('\n')}` : '';
       semanticSection += `
 RELEVANT PAST DISCUSSIONS:
 ${semantic_context.similar_conversations.slice(0, 3).map(conv => 
-  `- ${conv.person_id === 'general' ? 'General discussion' : people.find(p => p.id === conv.person_id)?.name || 'Unknown'}: "${conv.content.substring(0, 100)}..." (${Math.round(conv.similarity * 100)}% relevant)`
+  `- ${conv.person_id === 'general' ? 'General discussion' : people.find((p: any) => p.id === conv.person_id)?.name || 'Unknown'}: "${conv.content.substring(0, 100)}..." (${Math.round(conv.similarity * 100)}% relevant)`
 ).join('\n')}`;
     }
 
@@ -656,7 +656,7 @@ ${semantic_context.similar_conversations.slice(0, 3).map(conv =>
       semanticSection += `
 RELATED INSIGHTS FROM OTHER CONVERSATIONS:
 ${semantic_context.cross_person_insights.slice(0, 2).map(insight => 
-  `- ${people.find(p => p.id === insight.person_id)?.name || 'Unknown'}: "${insight.content.substring(0, 100)}..."`
+  `- ${people.find((p: any) => p.id === insight.person_id)?.name || 'Unknown'}: "${insight.content.substring(0, 100)}..."`
 ).join('\n')}`;
     }
   }
@@ -664,7 +664,7 @@ ${semantic_context.cross_person_insights.slice(0, 2).map(insight =>
   // Context awareness note
   const contextNote = currentPersonId === 'general' 
     ? '\nCONVERSATION TYPE: General management discussion - use full team context for strategic advice'
-    : `\nCONVERSATION TYPE: Focused discussion about ${people.find(p => p.id === currentPersonId)?.name || 'team member'} - but you have full awareness of your entire team context and can reference any team member`;
+    : `\nCONVERSATION TYPE: Focused discussion about ${people.find((p: any) => p.id === currentPersonId)?.name || 'team member'} - but you have full awareness of your entire team context and can reference any team member`;
 
   return `${teamOverview}${themesSection}${challengesSection}${semanticSection}${contextNote}
 

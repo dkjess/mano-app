@@ -94,8 +94,8 @@ export async function detectNewPeopleInMessage(
     .filter((person, index, self) => 
       index === self.findIndex(p => p.name.toLowerCase() === person.name.toLowerCase())
     )
-    .filter(person => person.confidence >= 0.6)
-    .sort((a, b) => b.confidence - a.confidence);
+    .filter((person: any) => person.confidence >= 0.6)
+    .sort((a: any, b: any) => b.confidence - a.confidence);
   
   return {
     detectedPeople: uniquePeople,
