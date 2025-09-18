@@ -2,6 +2,8 @@
 
 Unified backend services for the Mano AI-powered management assistant.
 
+[![Deploy to Supabase](https://github.com/dkjess/mano-app/actions/workflows/deploy.yml/badge.svg)](https://github.com/dkjess/mano-app/actions/workflows/deploy.yml)
+
 ## Architecture
 
 This backend provides:
