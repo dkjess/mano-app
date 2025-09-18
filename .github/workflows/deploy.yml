@@ -60,7 +60,8 @@ jobs:
 
       - name: Supabase Link
         working-directory: ./backend
-        run: supabase link --project-ref $SUPABASE_PROJECT_ID
+        run: |
+          supabase link --project-ref $SUPABASE_PROJECT_ID --password $SUPABASE_DB_PASSWORD
 
       - name: Deploy database migrations
         working-directory: ./backend
