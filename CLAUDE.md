@@ -110,13 +110,29 @@ npm run seed:dev reset && npm run seed:dev
 ```
 
 ### iOS Development
+
+**MANDATORY BUILD TESTING**: Always run the build test script before claiming any iOS code changes work:
+
 ```bash
-# Open in Xcode
+# Required: Test build with consistent target (iPhone 16 Pro, iOS 26.0)
+./scripts/build-test.sh
+
+# The script will output:
+# ✅ Build SUCCEEDED! - Safe to proceed
+# ❌ Build FAILED! - Fix errors before continuing
+
+# Open in Xcode for development
 open Mano.xcodeproj
 
-# Build from command line
+# Manual build from command line (if needed)
 xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug
 ```
+
+**Build Testing Requirements:**
+- **Always use** `./scripts/build-test.sh` before claiming code works
+- **Target consistency**: iPhone 16 Pro with iOS 26.0
+- **Error visibility**: Script captures and displays all build errors
+- **No assumptions**: Never assume code compiles without testing
 
 ### Device Testing with ngrok
 For testing on physical iOS devices, use ngrok to tunnel local Supabase:
@@ -157,6 +173,25 @@ curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
 - **Testing**: Use `npx tsx scripts/test-is-self.ts` to verify self-reflection functionality
 - **Chat Prompts**: Self conversations use a dedicated coaching-focused prompt for personal growth
 - **Device Testing**: Always start ngrok for device testing - the automated setup script handles this
+
+### ⚠️ CRITICAL: Production Database Safety
+**NEVER reset production database without explicit confirmation!**
+
+✅ **Safe Commands:**
+```bash
+npm run reset          # Protected script - blocks production resets
+./scripts/safe-db-reset.sh  # Always check environment first
+```
+
+❌ **Dangerous Commands:**
+```bash
+npm run reset:unsafe   # Bypasses protection - use with extreme caution
+supabase db reset --linked  # WILL DESTROY PRODUCTION DATA
+```
+
+**Production Project ID:** `zfroutbzdkhivnpiezho`
+- The safe reset script automatically detects if you're linked to production
+- Always run `supabase unlink` to return to local development after production operations
 
 ### Troubleshooting
 - **Edge Functions authentication errors:** Always use `--env-file .env.local`

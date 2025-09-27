@@ -35,22 +35,22 @@ struct InputComposer: View {
                             .padding(.horizontal, 12)
                             .allowsHitTesting(false)
                     }
-                    
+
                     TextEditor(text: $messageText)
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .frame(minHeight: 36)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(minHeight: 36, maxHeight: isInputFocused ? 120 : 60) // More reasonable heights
+                        .fixedSize(horizontal: false, vertical: isInputFocused ? false : true) // Only allow scrolling when focused
                         .focused($isInputFocused)
                 }
                 .frame(maxWidth: .infinity)
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(.ultraThinMaterial)
+                        .fill(isInputFocused ? AnyShapeStyle(.white) : AnyShapeStyle(.ultraThinMaterial))
                         .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
                 )
-                
+
                 // Send button outside the input area - show when focused or has content
                 if hasContent || isInputFocused {
                     Button(action: onSendMessage) {
@@ -68,15 +68,19 @@ struct InputComposer: View {
                 }
             }
             .padding(.horizontal, 16)
-            .padding(.vertical, 20)
-            .background(.clear)
+            .padding(.vertical, 12)
             .onChange(of: isInputFocused) { _, focused in
                 withAnimation(.easeInOut(duration: 0.25)) {
                     backgroundOpacity = focused ? 0.4 : 0.8
                 }
             }
         }
-        .background(.clear)
+        .background(
+            Rectangle()
+                .fill(.ultraThinMaterial)
+                .opacity(backgroundOpacity)
+                .ignoresSafeArea(.container, edges: .bottom)
+        )
     }
     private var hasContent: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty

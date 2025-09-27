@@ -77,14 +77,14 @@ class SupabasePeopleManager {
             let session = try await client.auth.session
             let jsonData = try JSONEncoder().encode(requestData)
             
-            var request = URLRequest(url: URL(string: "\(Config.supabaseURL)/functions/v1/person")!)
+            var request = URLRequest(url: URL(string: "\(BackendEnvironmentManager.shared.currentEnvironment.supabaseURL)/functions/v1/person")!)
             request.httpMethod = "POST"
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
-            request.setValue(Config.supabaseAnonKey, forHTTPHeaderField: "apikey")
+            request.setValue(BackendEnvironmentManager.shared.currentEnvironment.supabaseAnonKey, forHTTPHeaderField: "apikey")
             request.httpBody = jsonData
             
-            print("🆕 Sending manual request to: \(Config.supabaseURL)/functions/v1/person")
+            print("🆕 Sending manual request to: \(BackendEnvironmentManager.shared.currentEnvironment.supabaseURL)/functions/v1/person")
             
             let (data, response) = try await URLSession.shared.data(for: request)
             

@@ -25,6 +25,7 @@ struct ConversationView: View {
     @StateObject private var contextAnalyzer = MessageContextAnalyzer()
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
+    @State private var newMessageIds: Set<UUID> = []
     
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
@@ -56,7 +57,7 @@ struct ConversationView: View {
     }
     
     private var emptyStateView: some View {
-        ZStack {
+        VStack(spacing: 0) {
             // Empty state content
             VStack {
                 Spacer()
@@ -67,46 +68,54 @@ struct ConversationView: View {
                 )
                 Spacer()
             }
-            
-            // Floating input at bottom (same as conversationContent)
-            VStack {
-                Spacer()
-                InputComposer(
-                    person: person,
-                    messageText: $messageText,
-                    isSending: $isSending,
-                    isInputFocused: _isInputFocused,
-                    onSendMessage: sendMessage
-                )
-            }
+
+            // Input at bottom (no longer floating)
+            InputComposer(
+                person: person,
+                messageText: $messageText,
+                isSending: $isSending,
+                isInputFocused: _isInputFocused,
+                onSendMessage: sendMessage
+            )
         }
     }
     
     private var conversationContent: some View {
-        ZStack {
+        VStack(spacing: 0) {
             // Main conversation area
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message)
+                            MessageBubbleView(message: message, isStreaming: false)
                                 .id(message.id)
+                                .scaleEffect(newMessageIds.contains(message.id) ? 0.8 : 1.0)
+                                .opacity(newMessageIds.contains(message.id) ? 0 : 1)
+                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
+                                .onAppear {
+                                    if newMessageIds.contains(message.id) {
+                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                            newMessageIds.remove(message.id)
+                                        }
+                                    }
+                                }
                         }
                         
                         // Show only ONE thinking/loading state at a time
                         if let streamingMsg = streamingMessage {
                             if !streamingText.isEmpty {
-                                // Streaming content - show the actual message with typing cursor
+                                // Streaming content - show the actual message with progressive reveal
                                 MessageBubbleView(
                                     message: Message(
                                         id: streamingMsg.id,
                                         userId: streamingMsg.userId,
-                                        content: streamingText + "|", // Add slim typing cursor
+                                        content: streamingText,
                                         isUser: false,
                                         personId: streamingMsg.personId,
                                         topicId: streamingMsg.topicId,
                                         createdAt: streamingMsg.createdAt
-                                    )
+                                    ),
+                                    isStreaming: true
                                 )
                                 .id("streaming")
                             } else if let contextualMessage = contextualThinkingMessage,
@@ -123,13 +132,9 @@ struct ConversationView: View {
                                     .id("thinking")
                             }
                         }
-                        
-                        // Spacer for floating input - ensure messages are visible above input
-                        Spacer()
-                            .frame(height: 160)
                     }
                     .padding()
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 0)
                 }
                 .onAppear {
                     if let lastMessage = messages.last {
@@ -160,12 +165,13 @@ struct ConversationView: View {
                     }
                 }
                 .onChange(of: streamingText) { _, newValue in
+                    // Only auto-scroll if user is not manually scrolling
                     if !newValue.isEmpty && !isUserScrolling {
                         let now = Date()
-                        // Throttle scroll updates to prevent excessive animations (max 60fps)
-                        if now.timeIntervalSince(lastScrollTime) > 0.016 {
+                        // Throttle scroll updates to prevent excessive animations
+                        if now.timeIntervalSince(lastScrollTime) > 0.3 {
                             lastScrollTime = now
-                            withAnimation(.easeOut(duration: 0.1)) {
+                            withAnimation(.easeOut(duration: 0.2)) {
                                 proxy.scrollTo("streaming", anchor: .top)
                             }
                         }
@@ -212,25 +218,22 @@ struct ConversationView: View {
                             // User is manually scrolling
                             isUserScrolling = true
                             userScrollTimer?.invalidate()
-                            userScrollTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
-                                // Resume auto-scroll after 2 seconds of no manual scrolling
+                            userScrollTimer = Timer.scheduledTimer(withTimeInterval: 3.0, repeats: false) { _ in
+                                // Resume auto-scroll after 3 seconds of no manual scrolling
                                 isUserScrolling = false
                             }
                         }
                 )
             }
-            
-            // Floating input at bottom
-            VStack {
-                Spacer()
-                InputComposer(
-                    person: person,
-                    messageText: $messageText,
-                    isSending: $isSending,
-                    isInputFocused: _isInputFocused,
-                    onSendMessage: sendMessage
-                )
-            }
+
+            // Input composer at bottom (no longer floating/overlapping)
+            InputComposer(
+                person: person,
+                messageText: $messageText,
+                isSending: $isSending,
+                isInputFocused: _isInputFocused,
+                onSendMessage: sendMessage
+            )
         }
     }
     
@@ -265,7 +268,9 @@ struct ConversationView: View {
             topicId: nil,
             createdAt: Date()
         )
-        
+
+        // Add animation for new user message
+        newMessageIds.insert(userMessage.id)
         messages.append(userMessage)
         
         let aiMessageId = UUID()
@@ -285,13 +290,14 @@ struct ConversationView: View {
                 print("🤖 Starting message analysis for: \(text)")
                 let analysis = await contextAnalyzer.analyzeMessage(text)
                 print("📊 Analysis result - Intent: \(analysis.intent.rawValue), Message: \(analysis.contextualMessage)")
-                
+
                 await MainActor.run {
                     contextualThinkingMessage = analysis.contextualMessage
                     analysisResult = analysis
                     print("💭 Contextual message set: \(contextualThinkingMessage ?? "nil")")
                 }
-                
+
+                // Simplified streaming - just add text directly, less jerky
                 try await SupabaseManager.shared.sendMessageWithStream(
                     text,
                     to: person.id

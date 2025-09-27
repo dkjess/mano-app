@@ -17,7 +17,9 @@ struct PeopleListView: View {
     @State private var personToEdit: Person? = nil
     @State private var personToDelete: Person? = nil
     @State private var showingDeleteConfirmation = false
+    @State private var showEnvironmentPicker = false
     @ObservedObject private var supabase = SupabaseManager.shared
+    @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
     
     var body: some View {
         NavigationStack {
@@ -71,6 +73,30 @@ struct PeopleListView: View {
                 ConversationView(person: person)
             }
             .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    // Environment indicator
+                    Button(action: {
+                        showEnvironmentPicker.toggle()
+                    }) {
+                        HStack(spacing: 3) {
+                            Image(systemName: environmentManager.currentEnvironment.icon)
+                                .font(.caption2)
+                            Text(environmentManager.currentEnvironment == .production ? "Prod" : "Dev")
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(environmentManager.currentEnvironment == .production ?
+                                     Color.green.opacity(0.15) : Color.orange.opacity(0.15))
+                        )
+                        .foregroundColor(environmentManager.currentEnvironment == .production ?
+                                       .green : .orange)
+                    }
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     HStack {
                         if !isEditMode {
@@ -78,7 +104,7 @@ struct PeopleListView: View {
                                 Image(systemName: "plus")
                             }
                         }
-                        
+
                         if isEditMode {
                             Button("Done") {
                                 isEditMode = false
@@ -88,9 +114,9 @@ struct PeopleListView: View {
                                 Button("Edit List") {
                                     isEditMode = true
                                 }
-                                
+
                                 Divider()
-                                
+
                                 Button("Sign Out") {
                                     Task {
                                         try? await supabase.signOut()
@@ -115,6 +141,9 @@ struct PeopleListView: View {
                         navigateToNewPerson = newPerson
                     }
                 )
+            }
+            .sheet(isPresented: $showEnvironmentPicker) {
+                EnvironmentPickerView()
             }
             .sheet(item: $personToEdit) { person in
                 if person.isSelf == true {

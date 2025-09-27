@@ -14,47 +14,86 @@ import PostgREST
 @MainActor
 class SupabaseManager: ObservableObject {
     static let shared = SupabaseManager()
-    
-    let client: SupabaseClient
-    
+
+    private(set) var client: SupabaseClient
+
     // Sub-managers for focused responsibilities
-    let auth: SupabaseAuthManager
-    let people: SupabasePeopleManager
-    let messages: SupabaseMessagesManager
-    let profile: SupabaseProfileManager
-    
+    private(set) var auth: SupabaseAuthManager
+    private(set) var people: SupabasePeopleManager
+    private(set) var messages: SupabaseMessagesManager
+    private(set) var profile: SupabaseProfileManager
+
     // Published properties from auth manager
     @Published var isAuthenticated = false
     @Published var user: User?
-    
+
     private var cancellables = Set<AnyCancellable>()
-    
+    private let environmentManager = BackendEnvironmentManager.shared
+
     private init() {
         print("🔷 SupabaseManager init starting...")
-        print("🔷 Supabase URL: \(Config.supabaseURL)")
-        print("🔷 Anon Key: \(String(Config.supabaseAnonKey.prefix(20)))...")
-        
+        let environment = environmentManager.currentEnvironment
+        print("🔷 Using environment: \(environment.displayName)")
+        print("🔷 Supabase URL: \(environment.supabaseURL)")
+        print("🔷 Anon Key: \(String(environment.supabaseAnonKey.prefix(20)))...")
+
         self.client = SupabaseClient(
-            supabaseURL: URL(string: Config.supabaseURL)!,
-            supabaseKey: Config.supabaseAnonKey
+            supabaseURL: URL(string: environment.supabaseURL)!,
+            supabaseKey: environment.supabaseAnonKey
         )
-        
+
         print("🔷 SupabaseClient created successfully")
-        
+
         // Initialize sub-managers
         self.auth = SupabaseAuthManager(client: client)
         self.people = SupabasePeopleManager(client: client, authManager: auth)
         self.messages = SupabaseMessagesManager(client: client, authManager: auth)
         self.profile = SupabaseProfileManager(client: client, authManager: auth)
-        
+
         // Subscribe to auth manager changes
         auth.$isAuthenticated
             .receive(on: DispatchQueue.main)
             .assign(to: &$isAuthenticated)
-        
+
         auth.$user
             .receive(on: DispatchQueue.main)
             .assign(to: &$user)
+    }
+
+    // Reinitialize with new environment
+    func reinitialize(with environment: BackendEnvironment) async {
+        print("🔄 Reinitializing SupabaseManager with environment: \(environment.displayName)")
+
+        // Sign out from current session
+        if isAuthenticated {
+            try? await auth.signOut()
+        }
+
+        // Clear cancellables
+        cancellables.removeAll()
+
+        // Create new client with new environment
+        self.client = SupabaseClient(
+            supabaseURL: URL(string: environment.supabaseURL)!,
+            supabaseKey: environment.supabaseAnonKey
+        )
+
+        // Reinitialize sub-managers
+        self.auth = SupabaseAuthManager(client: client)
+        self.people = SupabasePeopleManager(client: client, authManager: auth)
+        self.messages = SupabaseMessagesManager(client: client, authManager: auth)
+        self.profile = SupabaseProfileManager(client: client, authManager: auth)
+
+        // Re-subscribe to auth manager changes
+        auth.$isAuthenticated
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$isAuthenticated)
+
+        auth.$user
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$user)
+
+        print("✅ SupabaseManager reinitialized successfully")
     }
     
     // MARK: - Convenience methods that delegate to sub-managers

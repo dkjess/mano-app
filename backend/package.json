@@ -8,7 +8,8 @@
     "dev": "supabase functions serve --env-file .env.local",
     "start": "supabase start",
     "stop": "supabase stop",
-    "reset": "supabase db reset",
+    "reset": "./scripts/safe-db-reset.sh",
+    "reset:unsafe": "supabase db reset",
     "setup": "./scripts/dev-setup.sh",
     "seed:dev": "npx tsx scripts/seed-test-user.ts",
     "test": "cd tests && deno test --allow-all",
@@ -18,7 +19,11 @@
     "deploy": "supabase functions deploy",
     "logs": "supabase functions logs",
     "migration:new": "supabase migration new",
-    "migration:up": "supabase migration up"
+    "migration:up": "supabase migration up",
+    "env:local": "./scripts/env-local.sh",
+    "env:production": "./scripts/env-production.sh",
+    "env:status": "./scripts/env-status.sh",
+    "env:stop": "./scripts/env-stop.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.53.0",

@@ -52,8 +52,8 @@ final class SupabaseProfileManager: ObservableObject {
 
             let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
 
-            let supabaseURL = Config.supabaseURL
-            let supabaseAnonKey = Config.supabaseAnonKey
+            let supabaseURL = BackendEnvironmentManager.shared.currentEnvironment.supabaseURL
+            let supabaseAnonKey = BackendEnvironmentManager.shared.currentEnvironment.supabaseAnonKey
 
             var request = URLRequest(url: URL(string: "\(supabaseURL)/functions/v1/user-profile-foundation")!)
             request.httpMethod = "PUT"

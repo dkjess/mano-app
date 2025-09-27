@@ -54,19 +54,25 @@ class SupabaseAuthManager: ObservableObject {
         isLoading = true
         errorMessage = ""
 
+        defer {
+            isLoading = false
+        }
+
         do {
             try await client.auth.signIn(email: email, password: password)
         } catch {
             errorMessage = error.localizedDescription
             throw error
         }
-
-        isLoading = false
     }
 
     func signUp(email: String, password: String) async throws {
         isLoading = true
         errorMessage = ""
+
+        defer {
+            isLoading = false
+        }
 
         do {
             try await client.auth.signUp(email: email, password: password)
@@ -74,13 +80,15 @@ class SupabaseAuthManager: ObservableObject {
             errorMessage = error.localizedDescription
             throw error
         }
-
-        isLoading = false
     }
 
     func signInWithApple() async throws {
         isLoading = true
         errorMessage = ""
+
+        defer {
+            isLoading = false
+        }
 
         do {
             try await client.auth.signInWithIdToken(
@@ -94,13 +102,15 @@ class SupabaseAuthManager: ObservableObject {
             errorMessage = error.localizedDescription
             throw error
         }
-
-        isLoading = false
     }
 
     func signInWithGoogle() async throws {
         isLoading = true
         errorMessage = ""
+
+        defer {
+            isLoading = false
+        }
 
         do {
             // This will need to be implemented with Google Sign-In SDK
@@ -110,19 +120,23 @@ class SupabaseAuthManager: ObservableObject {
             errorMessage = error.localizedDescription
             throw error
         }
-
-        isLoading = false
     }
 
     func signOut() async throws {
         isLoading = true
+        defer {
+            isLoading = false
+        }
         try await client.auth.signOut()
-        isLoading = false
     }
 
     func resetPassword(email: String) async throws {
         isLoading = true
         errorMessage = ""
+
+        defer {
+            isLoading = false
+        }
 
         do {
             try await client.auth.resetPasswordForEmail(email)
@@ -130,7 +144,5 @@ class SupabaseAuthManager: ObservableObject {
             errorMessage = error.localizedDescription
             throw error
         }
-
-        isLoading = false
     }
 }

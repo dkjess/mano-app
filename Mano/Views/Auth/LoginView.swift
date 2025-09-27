@@ -16,6 +16,7 @@ struct LoginView: View {
     @State private var shouldNavigateToHome = false
     
     @ObservedObject private var supabase = SupabaseManager.shared
+    @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
     
     var body: some View {
         NavigationStack {
@@ -31,17 +32,34 @@ struct LoginView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                     
-                    // Connection status indicator
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
-                        Text(Config.supabaseURL.contains("127.0.0.1") ? "Connected to Local Supabase" : "Connected to Production")
-                            .font(.caption)
+                    // Environment picker
+                    VStack(spacing: 8) {
+                        HStack(spacing: 8) {
+                            Image(systemName: environmentManager.currentEnvironment.icon)
+                                .foregroundColor(environmentManager.currentEnvironment == .production ? .red : .blue)
+                                .frame(width: 16, height: 16)
+                            Text("Environment: \(environmentManager.currentEnvironment.displayName)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+
+                        Picker("Environment", selection: $environmentManager.currentEnvironment) {
+                            ForEach(BackendEnvironment.allCases, id: \.self) { env in
+                                HStack {
+                                    Image(systemName: env.icon)
+                                    Text(env.displayName)
+                                }
+                                .tag(env)
+                            }
+                        }
+                        .pickerStyle(.segmented)
+
+                        Text(environmentManager.currentEnvironment.description)
+                            .font(.caption2)
                             .foregroundColor(.secondary)
                     }
                     .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 8)
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
                 }
@@ -97,7 +115,7 @@ struct LoginView: View {
                     Text("Supabase URL:")
                         .font(.caption2)
                         .foregroundColor(.secondary)
-                    Text(Config.supabaseURL)
+                    Text(environmentManager.currentEnvironment.supabaseURL)
                         .font(.caption2)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
@@ -118,7 +136,7 @@ struct LoginView: View {
         errorMessage = ""
         
         print("🔵 Attempting login with email: \(email)")
-        print("🔵 Supabase URL: \(Config.supabaseURL)")
+        print("🔵 Supabase URL: \(environmentManager.currentEnvironment.supabaseURL)")
         
         Task {
             do {

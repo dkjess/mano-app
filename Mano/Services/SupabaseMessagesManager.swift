@@ -123,8 +123,8 @@ class SupabaseMessagesManager {
         
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
         
-        let supabaseURL = Config.supabaseURL
-        let supabaseAnonKey = Config.supabaseAnonKey
+        let supabaseURL = BackendEnvironmentManager.shared.currentEnvironment.supabaseURL
+        let supabaseAnonKey = BackendEnvironmentManager.shared.currentEnvironment.supabaseAnonKey
         
         var request = URLRequest(url: URL(string: "\(supabaseURL)/functions/v1/chat")!)
         request.httpMethod = "POST"
@@ -209,8 +209,8 @@ class SupabaseMessagesManager {
         let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
         print("📦 Request payload: \(String(data: jsonData, encoding: .utf8) ?? "nil")")
         
-        let supabaseURL = Config.supabaseURL
-        let supabaseAnonKey = Config.supabaseAnonKey
+        let supabaseURL = BackendEnvironmentManager.shared.currentEnvironment.supabaseURL
+        let supabaseAnonKey = BackendEnvironmentManager.shared.currentEnvironment.supabaseAnonKey
         
         var request = URLRequest(url: URL(string: "\(supabaseURL)/functions/v1/chat")!)
         request.httpMethod = "POST"

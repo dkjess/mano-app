@@ -20,28 +20,29 @@ struct SignupView: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 32) {
-                // Header
-                VStack(spacing: 16) {
-                    Text("👋")
-                        .font(.system(size: 64))
+            ScrollView {
+                VStack(spacing: 32) {
+                    // Header
+                    VStack(spacing: 16) {
+                        Text("👋")
+                            .font(.system(size: 64))
 
-                    Text("Join Mano")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
+                        Text("Join Mano")
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
 
-                    Text("Your AI-powered companion for better management")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal)
-                }
-                .padding(.top, 40)
+                        Text("Your AI-powered companion for better management")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                    .padding(.top, 40)
 
-                Spacer()
+                    Spacer(minLength: 40)
 
-                // Auth Options
-                VStack(spacing: 16) {
+                    // Auth Options
+                    VStack(spacing: 16) {
                     // Sign in with Apple
                     SignInWithAppleButton(.signUp) { request in
                         request.requestedScopes = [.fullName, .email]
@@ -100,30 +101,38 @@ struct SignupView: View {
                         .foregroundColor(.white)
                         .cornerRadius(12)
                     }
-                }
-                .padding(.horizontal, 24)
-
-                Spacer()
-
-                // Footer
-                VStack(spacing: 8) {
-                    HStack {
-                        Text("Already have an account?")
-                            .foregroundColor(.secondary)
-                        Button("Sign In") {
-                            // Navigate back to login
-                        }
-                        .foregroundColor(.accentColor)
                     }
-                    .font(.system(size: 14))
+                    .padding(.horizontal, 24)
 
-                    Text("By continuing, you agree to our Terms & Privacy Policy")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 32)
+                    Spacer(minLength: 60)
+
+                    // Footer
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Already have an account?")
+                                .foregroundColor(.secondary)
+                            Button("Sign In") {
+                                // Navigate back to login
+                            }
+                            .foregroundColor(.accentColor)
+                        }
+                        .font(.system(size: 14))
+
+                        Text("By continuing, you agree to our Terms & Privacy Policy")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                    }
+                    .padding(.bottom, 32)
                 }
-                .padding(.bottom, 32)
+                .frame(maxWidth: .infinity)
+                .frame(minHeight: UIScreen.main.bounds.height - 100)
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .onTapGesture {
+                // Dismiss keyboard when tapping outside
+                UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
             .disabled(authManager.isLoading)
             .overlay {
@@ -150,19 +159,28 @@ struct SignupView: View {
     private var emailSignupForm: some View {
         VStack(spacing: 16) {
             TextField("Email", text: $email)
-                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 .textContentType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(.emailAddress)
 
             SecureField("Password", text: $password)
-                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 .textContentType(.newPassword)
                 .keyboardType(.default)
 
             SecureField("Confirm Password", text: $confirmPassword)
-                .textFieldStyle(.roundedBorder)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 14)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
                 .textContentType(.password)
                 .keyboardType(.default)
 

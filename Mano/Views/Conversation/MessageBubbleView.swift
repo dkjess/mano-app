@@ -9,35 +9,76 @@ import SwiftUI
 
 struct MessageBubbleView: View {
     let message: Message
-    
+    let isStreaming: Bool
+
+    init(message: Message, isStreaming: Bool = false) {
+        self.message = message
+        self.isStreaming = isStreaming
+    }
+
     var body: some View {
+        if message.isUser {
+            // User messages: Keep blue bubbles with right alignment
+            userMessageView
+        } else {
+            // AI messages: Full-width, no bubble
+            aiMessageView
+        }
+    }
+
+    private var userMessageView: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            if message.isUser {
-                Spacer(minLength: 60)
-            }
-            
-            VStack(alignment: message.isUser ? .trailing : .leading, spacing: 4) {
-                MarkdownView(content: message.content, isUserMessage: message.isUser)
+            Spacer(minLength: 60)
+
+            VStack(alignment: .trailing, spacing: 4) {
+                MarkdownView(content: message.content, isUserMessage: true)
                     .padding(.horizontal, 14)
                     .padding(.vertical, 10)
                     .background(
                         RoundedRectangle(cornerRadius: 18)
-                            .fill(message.isUser ? Color.blue : Color.gray.opacity(0.2))
+                            .fill(Color.blue)
                     )
-                    .foregroundStyle(message.isUser ? .white : .primary)
+                    .foregroundStyle(.white)
                     .textSelection(.enabled)
-                
+
                 Text(timeString(from: message.createdAt))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 4)
             }
-            
-            if !message.isUser {
-                Spacer(minLength: 60)
-            }
         }
         .padding(.horizontal, 4)
+    }
+
+    private var aiMessageView: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            // Full-width AI message with streaming support
+            HStack {
+                if isStreaming {
+                    // Use StreamingTextView for smooth animations
+                    StreamingTextView(text: message.content.replacingOccurrences(of: "|", with: ""))
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                } else {
+                    Text(message.content.replacingOccurrences(of: "|", with: ""))
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                }
+                Spacer()
+            }
+
+            // Timestamp aligned to left
+            HStack {
+                Text(timeString(from: message.createdAt))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Spacer()
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
     }
     
     private func timeString(from date: Date) -> String {

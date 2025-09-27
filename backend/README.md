@@ -105,12 +105,33 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 ## Development Commands
 
+### Environment Management
+
 ```bash
-# Start all services
+# Environment coordination scripts (recommended workflow)
+npm run env:status      # Show current environment status
+npm run env:local       # Start local development environment
+npm run env:production  # Switch to production environment
+npm run env:stop        # Stop local services
+
+# Or use scripts directly:
+./scripts/env-status.sh      # Show environment status
+./scripts/env-local.sh       # Start local development
+./scripts/env-production.sh  # Switch to production
+./scripts/env-stop.sh        # Stop local services
+```
+
+### Legacy Commands
+
+```bash
+# Start all services (legacy)
 npm run dev
 
-# Reset database with fresh test data
+# Reset LOCAL database with fresh test data (production-safe)
 npm run reset
+
+# ⚠️ DANGER: Unsafe reset (bypasses production protection)
+npm run reset:unsafe
 
 # Run tests
 npm run test
@@ -118,6 +139,22 @@ npm run test
 # Deploy functions
 npm run deploy
 ```
+
+### Unified Environment Switching
+
+The environment management scripts coordinate the backend with your iOS app's environment selection:
+
+- **Production Environment**: iOS app selects "Production" → backend uses production Supabase
+- **Local Environment**: iOS app selects "Local (ngrok)" → backend runs locally with ngrok tunnel
+- **Simulator Environment**: iOS app selects "Local (Simulator)" → backend runs locally for simulator only
+
+**Workflow:**
+1. Run `npm run env:status` to see current environment
+2. Run `npm run env:local` to start local development (with ngrok)
+3. Update iOS `BackendEnvironment.local` URL with the ngrok URL shown
+4. Select "Local (ngrok)" in iOS app environment picker
+5. Run `npm run env:production` to switch to production testing
+6. Select "Production" in iOS app environment picker
 
 ## Deployment
 

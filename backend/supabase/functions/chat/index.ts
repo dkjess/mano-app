@@ -982,20 +982,29 @@ async function handleStreamingChat({
               const textChunk = chunk.delta.text
               fullResponse += textChunk
 
-              // Break down chunk into smaller pieces for character-level streaming
-              const characters = textChunk.split('')
+              // Send larger chunks for smoother streaming
+              // Strategy: Send word-by-word or in small phrases
+              const words = textChunk.split(/(\s+)/) // Keep whitespace
+              let buffer = ''
 
-              for (let i = 0; i < characters.length; i++) {
-                const char = characters[i]
+              for (const word of words) {
+                buffer += word
 
-                // Send individual character
-                const sseData = `data: ${JSON.stringify({ content: char })}\n\n`
-                controller.enqueue(encoder.encode(sseData))
+                // Send buffer when we hit a word boundary or reach reasonable size
+                if (buffer.length >= 5 || word.trim().length > 0) {
+                  const sseData = `data: ${JSON.stringify({ content: buffer })}\n\n`
+                  controller.enqueue(encoder.encode(sseData))
+                  buffer = ''
 
-                // Add small delay between characters for typing effect (50-100ms)
-                if (i < characters.length - 1) {
-                  await new Promise(resolve => setTimeout(resolve, Math.random() * 50 + 50))
+                  // Small delay between chunks for smooth perception (20-40ms)
+                  await new Promise(resolve => setTimeout(resolve, Math.random() * 20 + 20))
                 }
+              }
+
+              // Send any remaining buffer
+              if (buffer.length > 0) {
+                const sseData = `data: ${JSON.stringify({ content: buffer })}\n\n`
+                controller.enqueue(encoder.encode(sseData))
               }
             }
           }
