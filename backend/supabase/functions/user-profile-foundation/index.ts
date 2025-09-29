@@ -97,22 +97,48 @@ serve(async (req) => {
       throw updateError
     }
 
-    // Also upsert the is_self person with the name information
+    // Also create/update the is_self person with the name information
     // Use call_name for the person record as that's what Mano should call them
-    const { error: personUpdateError } = await supabase
+
+    // First check if a self person already exists
+    const { data: existingSelfPerson } = await supabase
       .from('people')
-      .upsert({
-        user_id: user.id,
-        name: call_name, // Use their preferred call name, not full name
-        role: job_role,
-        team: company || null,
-        relationship_type: 'self',
-        is_self: true,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,is_self',
-        ignoreDuplicates: false
-      })
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('is_self', true)
+      .single()
+
+    let personUpdateError = null
+
+    if (existingSelfPerson) {
+      // Update existing self person
+      const { error } = await supabase
+        .from('people')
+        .update({
+          name: call_name,
+          role: job_role,
+          team: company || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('is_self', true)
+      personUpdateError = error
+    } else {
+      // Create new self person
+      const { error } = await supabase
+        .from('people')
+        .insert({
+          user_id: user.id,
+          name: call_name,
+          role: job_role,
+          team: company || null,
+          relationship_type: 'self',
+          is_self: true,
+          updated_at: new Date().toISOString(),
+          created_at: new Date().toISOString()
+        })
+      personUpdateError = error
+    }
 
     if (personUpdateError) {
       console.warn('Warning: Could not upsert is_self person:', personUpdateError)
