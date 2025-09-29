@@ -179,7 +179,7 @@ function generateProfileSuggestions(
   }
 
   // Sort by priority
-  const priorityOrder = { high: 3, medium: 2, low: 1 };
+  const priorityOrder: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
   return suggestions.sort((a: any, b: any) => priorityOrder[b.priority] - priorityOrder[a.priority]);
 }
 

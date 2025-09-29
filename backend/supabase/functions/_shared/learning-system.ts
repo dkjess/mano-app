@@ -339,6 +339,8 @@ Respond in JSON format:
           patternPromises.push(this.storeRecurringPattern({
             pattern_type: 'challenge',
             pattern_description: challenge,
+            frequency: 1,
+            last_occurrence: new Date().toISOString(),
             people_involved: personId !== 'general' ? [personId] : [],
             context_keywords: analysis.themes.concat(analysis.communication_patterns),
             suggested_actions: analysis.learning_opportunities,
@@ -354,6 +356,8 @@ Respond in JSON format:
           patternPromises.push(this.storeRecurringPattern({
             pattern_type: 'relationship',
             pattern_description: relationship,
+            frequency: 1,
+            last_occurrence: new Date().toISOString(),
             people_involved: personId !== 'general' ? [personId] : [],
             context_keywords: analysis.themes,
             suggested_actions: analysis.learning_opportunities,
@@ -369,6 +373,8 @@ Respond in JSON format:
           patternPromises.push(this.storeRecurringPattern({
             pattern_type: 'communication',
             pattern_description: commPattern,
+            frequency: 1,
+            last_occurrence: new Date().toISOString(),
             people_involved: personId !== 'general' ? [personId] : [],
             context_keywords: analysis.themes,
             suggested_actions: analysis.learning_opportunities,

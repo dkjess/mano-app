@@ -20,15 +20,59 @@ class SupabaseMessagesManager {
     
     func fetchMessages(for personId: UUID) async throws -> [Message] {
         print("💬 Fetching messages for person: \(personId)")
-        
+
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
             throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
         }
-        
+
         print("🔍 User ID: \(userId.uuidString)")
         print("🔍 Person ID: \(personId.uuidString)")
-        
+
+        // First, get the active conversation for this person
+        let conversationResponse = try await client
+            .from("conversations")
+            .select("id")
+            .eq("person_id", value: personId.uuidString.lowercased())
+            .eq("is_active", value: true)
+            .order("updated_at", ascending: false)
+            .limit(1)
+            .execute()
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        // If we have an active conversation, fetch messages from it
+        if !conversationResponse.data.isEmpty {
+            if let conversationData = try? JSONSerialization.jsonObject(with: conversationResponse.data) as? [[String: Any]],
+               let firstConversation = conversationData.first,
+               let conversationIdString = firstConversation["id"] as? String {
+
+                print("🔍 Found active conversation: \(conversationIdString)")
+
+                let response = try await client
+                    .from("messages")
+                    .select()
+                    .eq("conversation_id", value: conversationIdString)
+                    .order("created_at", ascending: true)
+                    .execute()
+
+                print("📦 Raw response data length: \(response.data.count)")
+
+                do {
+                    let messages = try decoder.decode([Message].self, from: response.data)
+                    print("✅ Fetched \(messages.count) messages from active conversation")
+                    return messages
+                } catch {
+                    print("❌ Decoding error: \(error)")
+                    print("📦 Raw data: \(String(data: response.data, encoding: .utf8) ?? "nil")")
+                    throw error
+                }
+            }
+        }
+
+        // Fallback: fetch messages by person_id for backward compatibility
+        print("⚠️ No active conversation found, falling back to person-based query")
         let response = try await client
             .from("messages")
             .select()
@@ -36,15 +80,12 @@ class SupabaseMessagesManager {
             .eq("person_id", value: personId.uuidString.lowercased())
             .order("created_at", ascending: true)
             .execute()
-        
+
         print("📦 Raw response data length: \(response.data.count)")
-        
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
+
         do {
             let messages = try decoder.decode([Message].self, from: response.data)
-            print("✅ Fetched \(messages.count) messages")
+            print("✅ Fetched \(messages.count) messages via fallback")
             return messages
         } catch {
             print("❌ Decoding error: \(error)")

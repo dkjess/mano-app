@@ -22,6 +22,7 @@ class SupabaseManager: ObservableObject {
     private(set) var people: SupabasePeopleManager
     private(set) var messages: SupabaseMessagesManager
     private(set) var profile: SupabaseProfileManager
+    private(set) var conversations: SupabaseConversationManager
 
     // Published properties from auth manager
     @Published var isAuthenticated = false
@@ -49,6 +50,7 @@ class SupabaseManager: ObservableObject {
         self.people = SupabasePeopleManager(client: client, authManager: auth)
         self.messages = SupabaseMessagesManager(client: client, authManager: auth)
         self.profile = SupabaseProfileManager(client: client, authManager: auth)
+        self.conversations = SupabaseConversationManager(client: client, authManager: auth)
 
         // Subscribe to auth manager changes
         auth.$isAuthenticated
@@ -83,6 +85,7 @@ class SupabaseManager: ObservableObject {
         self.people = SupabasePeopleManager(client: client, authManager: auth)
         self.messages = SupabaseMessagesManager(client: client, authManager: auth)
         self.profile = SupabaseProfileManager(client: client, authManager: auth)
+        self.conversations = SupabaseConversationManager(client: client, authManager: auth)
 
         // Re-subscribe to auth manager changes
         auth.$isAuthenticated

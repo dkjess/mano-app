@@ -14,8 +14,9 @@ struct Message: Codable, Identifiable, Equatable {
     let isUser: Bool
     let personId: UUID?
     let topicId: UUID?
+    let conversationId: UUID?
     let createdAt: Date
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
@@ -23,6 +24,7 @@ struct Message: Codable, Identifiable, Equatable {
         case isUser = "is_user"
         case personId = "person_id"
         case topicId = "topic_id"
+        case conversationId = "conversation_id"
         case createdAt = "created_at"
     }
 }

@@ -72,7 +72,7 @@ export class ProactiveInsightsSystem {
       // Sort by relevance and priority
       return insights
         .sort((a: any, b: any) => {
-          const priorityWeight = { high: 3, medium: 2, low: 1 };
+          const priorityWeight: { [key: string]: number } = { high: 3, medium: 2, low: 1 };
           const aPriority = priorityWeight[a.priority] || 1;
           const bPriority = priorityWeight[b.priority] || 1;
           

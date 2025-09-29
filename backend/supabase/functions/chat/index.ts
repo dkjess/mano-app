@@ -9,6 +9,7 @@ import { OnboardingService } from '../_shared/onboarding-service.ts'
 import { getOnboardingPrompt } from '../_shared/onboarding-prompts.ts'
 import { detectNewPeopleWithContext, type ContextAwarePersonDetectionResult } from '../_shared/context-aware-person-detection.ts'
 import { analyzeProfileCompleteness, shouldPromptForCompletion } from '../_shared/profile-completeness.ts'
+import { ConversationManager, type Conversation } from '../_shared/conversation-manager.ts'
 import { 
   getNextQuestion, 
   generateCompletionMessage,
@@ -19,6 +20,17 @@ import {
 } from '../_shared/profile-enhancement.ts'
 import { extractProfileDataWithContext } from '../_shared/context-aware-profile-enhancement.ts'
 import { LearningSystem } from '../_shared/learning-system.ts'
+
+// Type definitions
+interface ProfileSuggestion {
+  id: string;
+  type: string;
+  title?: string;
+  content: string;
+  confidence?: number;
+  target_person?: string;
+  preview?: string;
+}
 
 // PostHog server-side tracking
 const POSTHOG_KEY = Deno.env.get('POSTHOG_KEY')
@@ -360,6 +372,7 @@ interface Person {
   goals?: string | null;
   strengths?: string | null;
   challenges?: string | null;
+  is_self?: boolean | null;
 }
 
 // System prompts - optimized for conversational brevity
@@ -729,7 +742,7 @@ async function handleStreamingChat({
       person = personData
     }
 
-    // Get conversation history (from topic if applicable, otherwise from person)
+    // Get conversation history (from topic if applicable, otherwise from person's active conversation)
     let conversationHistory
     if (isTopicConversation && actualTopicId) {
       // For topic conversations, get messages from the topic
@@ -740,7 +753,16 @@ async function handleStreamingChat({
         .order('created_at', { ascending: true })
       conversationHistory = topicMessages || []
     } else {
-      conversationHistory = await getMessages(person_id, supabase)
+      // For person conversations, get messages from active conversation
+      const conversationManager = new ConversationManager(supabase, user.id);
+      const conversation = await conversationManager.getOrCreateActiveConversation(person_id);
+
+      const { data: conversationMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversation.id)
+        .order('created_at', { ascending: true })
+      conversationHistory = conversationMessages || []
     }
 
     // Get file content for the most recent user message if files are present
@@ -901,7 +923,7 @@ async function handleStreamingChat({
         managementContext,
         userProfile,
         profileContext,
-        person.is_self
+        !!person.is_self
       )
     }
 
@@ -963,18 +985,22 @@ async function handleStreamingChat({
 
           console.log('🚀 Starting TRUE streaming response...')
 
-          // Start background message saving (non-blocking)
-          const backgroundSavePromise = saveMessagesInBackground(
-            userMessage,
-            person_id,
-            user.id,
-            isTopicConversation,
-            actualTopicId,
-            processedFiles,
-            supabase
-          ).catch(error => {
+          // Start background message saving (blocking to get conversation_id)
+          let conversationIdForAI: string | null = null
+          try {
+            conversationIdForAI = await saveMessagesInBackground(
+              userMessage,
+              person_id,
+              user.id,
+              !!isTopicConversation,
+              actualTopicId,
+              processedFiles,
+              supabase
+            )
+            console.log('✅ User message saved, conversation_id:', conversationIdForAI)
+          } catch (error) {
             console.error('❌ Background message save failed:', error)
-          })
+          }
 
           // Stream the response as it comes from Anthropic
           for await (const chunk of streamingResponse) {
@@ -1018,11 +1044,12 @@ async function handleStreamingChat({
             fullResponse,
             person_id,
             user.id,
-            isTopicConversation,
+            !!isTopicConversation,
             actualTopicId,
             userMessage,
             managementContext,
-            supabase
+            supabase,
+            conversationIdForAI
           ).catch(error => {
             console.error('❌ Background AI response save failed:', error)
           })
@@ -1091,7 +1118,7 @@ function buildPersonSystemPrompt(
   profileContext?: string,
   isSelf?: boolean
 ): string {
-  const contextText = managementContext ? formatContextForPrompt(managementContext) : ''
+  const contextText = managementContext ? formatContextForPrompt(managementContext, 'general') : ''
   const historyText = conversationHistory
     .slice(-10)
     .map((msg: any) => `${msg.is_user ? 'Manager' : 'Mano'}: ${msg.content}`)
@@ -1331,10 +1358,20 @@ async function saveMessagesInBackground(
   topicId: string | undefined,
   processedFiles: Array<{name: string; contentType: string; content: string; size: number}>,
   supabase: any
-): Promise<void> {
+): Promise<string | null> {
   console.log('🔄 Background: Starting user message save...')
 
   try {
+    let conversation_id: string | null = null;
+
+    // Get or create conversation for person-based chats
+    if (!isTopicConversation && person_id) {
+      const conversationManager = new ConversationManager(supabase, user_id);
+      const conversation = await conversationManager.getOrCreateActiveConversation(person_id);
+      conversation_id = conversation.id;
+      console.log('✅ Background: Using conversation:', conversation_id);
+    }
+
     // Save user message
     const { data: userMessageRecord, error: userError } = await supabase
       .from('messages')
@@ -1342,6 +1379,7 @@ async function saveMessagesInBackground(
         content: userMessage,
         person_id: isTopicConversation ? null : person_id,
         topic_id: isTopicConversation ? topicId : null,
+        conversation_id: conversation_id,
         is_user: true,
         user_id: user_id
       })
@@ -1377,6 +1415,9 @@ async function saveMessagesInBackground(
         }
       }
     }
+
+    // Return the conversation_id for use by AI response save
+    return conversation_id
   } catch (error) {
     console.error('❌ Background: User message save failed:', error)
     throw error
@@ -1391,23 +1432,45 @@ async function saveAIResponseInBackground(
   topicId: string | undefined,
   userMessage: string,
   managementContext: any,
-  supabase: any
+  supabase: any,
+  conversation_id: string | null
 ): Promise<void> {
   console.log('🔄 Background: Starting AI response save and intelligence...')
 
   try {
+    // Create a service role client for background operations
+    const serviceSupabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+    console.log('🔍 Background: Step 1 - Created service role client for background operations')
+
+    console.log('🔍 Background: Step 2 - Using conversation_id from user message:', conversation_id)
+
     // 1. Save AI response
-    const { data: assistantMessage, error: responseError } = await supabase
+    console.log('🔍 Background: Step 4 - Starting database insert...')
+    console.log('🔍 Background: Insert params:', {
+      contentLength: fullResponse.length,
+      person_id: isTopicConversation ? null : person_id,
+      topic_id: isTopicConversation ? topicId : null,
+      conversation_id: conversation_id,
+      is_user: false,
+      user_id: user_id
+    })
+    const { data: assistantMessage, error: responseError } = await serviceSupabase
       .from('messages')
       .insert({
         content: fullResponse,
         person_id: isTopicConversation ? null : person_id,
         topic_id: isTopicConversation ? topicId : null,
+        conversation_id: conversation_id,
         is_user: false,
         user_id: user_id
       })
       .select()
       .single()
+
+    console.log('🔍 Background: Step 5 - Database insert completed')
 
     if (responseError) {
       console.error('❌ Background: Failed to save AI response:', responseError)
@@ -1521,7 +1584,7 @@ serve(async (req) => {
         const lastMessage = messages[messages.length - 1];
         
         // Extract attachments from the last user message (AI SDK v4 format)
-        const attachments = lastMessage?.experimental_attachments || [];
+        const attachments = (lastMessage as any)?.experimental_attachments || [];
         
         // Process attachments if present
         perf.checkpoint('attachment_processing_start');
@@ -1566,12 +1629,9 @@ serve(async (req) => {
             
             const fileContexts = processedFiles.map(file => {
               if (file.contentType.startsWith('text/') || file.contentType === 'application/json') {
-                if (file.isLarge) {
-                  // For large files, include full content but add a note
-                  return `\n\n**Large File: ${file.name}** (${file.contentType}, ~${file.estimatedTokens} tokens)\n${file.content}`;
-                } else {
-                  return `\n\n**File: ${file.name}** (${file.contentType})\n${file.content}`;
-                }
+                // Note: isLarge and estimatedTokens are not part of the type definition
+                // Just include the content as-is
+                return `\n\n**File: ${file.name}** (${file.contentType})\n${file.content}`;
               } else {
                 return `\n\n**File: ${file.name}** (${file.contentType}, ${file.size} bytes)`;
               }
@@ -1639,7 +1699,7 @@ serve(async (req) => {
         supabase,
         anthropic,
         user,
-        person_id,
+        person_id: person_id!,
         userMessage,
         topicId: topic_id,
         hasFiles,
@@ -1665,6 +1725,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    // Initialize variables for regular chat path (to match streaming path)
+    const messageId: string | undefined = undefined;
+    const processedFiles: Array<{name: string; contentType: string; content: string; size: number}> = [];
 
     // Initialize onboarding service
     const onboardingService = new OnboardingService(supabase)
@@ -1748,7 +1812,7 @@ serve(async (req) => {
       person_id === 'general', // isTopicConversation
       undefined, // topicId (not used for person conversations)
       messageId, // for file processing
-      processedFiles.length > 0 // hasFiles
+      (processedFiles?.length || 0) > 0 // hasFiles
     )
     const contextBuildTime = Date.now() - startTime
 
@@ -2037,7 +2101,7 @@ This will help you give better, more personalized advice in future conversations
       {
         userId: user.id,
         personId: person_id,
-        messageId: userMessageRecord.id,
+        messageId: '', // Will be populated by actual save
         content: userMessage,
         messageType: 'user',
         metadata: {}
@@ -2075,8 +2139,8 @@ This will help you give better, more personalized advice in future conversations
     let personDetection = null
     try {
       // Skip person detection for AI-generated welcome messages to prevent double detection
-      const isWelcomeMessage = fullResponse.includes("Got it -") || 
-                             fullResponse.toLowerCase().includes("try setting up") ||
+      const isWelcomeMessage = claudeResponse.includes("Got it -") ||
+                             claudeResponse.toLowerCase().includes("try setting up") ||
                              (userMessage.trim().length < 50 && managementContext.people?.length === 1);
       
       if (!isWelcomeMessage) {
@@ -2110,7 +2174,7 @@ This will help you give better, more personalized advice in future conversations
 
     // Return response with person detection and profile completion results
     const responseData: any = {
-      userMessage: userMessageRecord,
+      userMessage: { content: userMessage, id: '', created_at: new Date().toISOString() },
       assistantMessage,
       personDetection,
       shouldRetry: claudeResponse.includes('🤚') || claudeResponse.includes('🤷') || claudeResponse.includes('🤔')
