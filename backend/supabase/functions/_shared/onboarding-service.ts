@@ -50,7 +50,7 @@ export class OnboardingService {
 
     return {
       isNewUser,
-      currentStep: profile?.onboarding_step || 'welcome',
+      currentStep: String(profile?.onboarding_step || 'welcome'),
       hasPreferredName: !!profile?.preferred_name,
       teamMemberCount: peopleCount,
       conversationCount: messageCount

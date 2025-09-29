@@ -88,8 +88,8 @@ export class EnhancedSemanticSearch {
       results = await this.vectorService.searchSimilarConversations(
         expandedQuery,
         this.userId,
-        { 
-          person_id: context.person_id,
+        {
+          personFilter: context.person_id,
           limit: 20,
           threshold: 0.7
         }

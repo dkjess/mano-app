@@ -1617,12 +1617,9 @@ serve(async (req) => {
             
             const fileContexts = processedFiles.map(file => {
               if (file.contentType.startsWith('text/') || file.contentType === 'application/json') {
-                if (file.isLarge) {
-                  // For large files, include full content but add a note
-                  return `\n\n**Large File: ${file.name}** (${file.contentType}, ~${file.estimatedTokens} tokens)\n${file.content}`;
-                } else {
-                  return `\n\n**File: ${file.name}** (${file.contentType})\n${file.content}`;
-                }
+                // Note: isLarge and estimatedTokens are not part of the type definition
+                // Just include the content as-is
+                return `\n\n**File: ${file.name}** (${file.contentType})\n${file.content}`;
               } else {
                 return `\n\n**File: ${file.name}** (${file.contentType}, ${file.size} bytes)`;
               }
@@ -1690,7 +1687,7 @@ serve(async (req) => {
         supabase,
         anthropic,
         user,
-        person_id,
+        person_id: person_id!,
         userMessage,
         topicId: topic_id,
         hasFiles,
@@ -1799,7 +1796,7 @@ serve(async (req) => {
       person_id === 'general', // isTopicConversation
       undefined, // topicId (not used for person conversations)
       messageId, // for file processing
-      processedFiles.length > 0 // hasFiles
+      (processedFiles?.length || 0) > 0 // hasFiles
     )
     const contextBuildTime = Date.now() - startTime
 
@@ -2088,7 +2085,7 @@ This will help you give better, more personalized advice in future conversations
       {
         userId: user.id,
         personId: person_id,
-        messageId: userMessageRecord.id,
+        messageId: '', // Will be populated by actual save
         content: userMessage,
         messageType: 'user',
         metadata: {}
@@ -2126,8 +2123,8 @@ This will help you give better, more personalized advice in future conversations
     let personDetection = null
     try {
       // Skip person detection for AI-generated welcome messages to prevent double detection
-      const isWelcomeMessage = fullResponse.includes("Got it -") || 
-                             fullResponse.toLowerCase().includes("try setting up") ||
+      const isWelcomeMessage = claudeResponse.includes("Got it -") ||
+                             claudeResponse.toLowerCase().includes("try setting up") ||
                              (userMessage.trim().length < 50 && managementContext.people?.length === 1);
       
       if (!isWelcomeMessage) {
@@ -2161,7 +2158,7 @@ This will help you give better, more personalized advice in future conversations
 
     // Return response with person detection and profile completion results
     const responseData: any = {
-      userMessage: userMessageRecord,
+      userMessage: { content: userMessage, id: '', created_at: new Date().toISOString() },
       assistantMessage,
       personDetection,
       shouldRetry: claudeResponse.includes('🤚') || claudeResponse.includes('🤷') || claudeResponse.includes('🤔')

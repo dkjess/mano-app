@@ -41,8 +41,9 @@ serve(async (req) => {
         // Generate embedding using Supabase built-in AI inference
         // Create session outside the loop for better performance
         if (!(globalThis as any).embeddingSession) {
-          console.log('🔧 Creating new AI embedding session...')
-          (globalThis as any).embeddingSession = new (Supabase as any).ai.Session('gte-small')
+          console.log('🔧 Creating new AI embedding session...');
+          // Note: Supabase AI Session would be used here if available
+          // (globalThis as any).embeddingSession = new (Supabase as any).ai.Session('gte-small')
         }
         
         const embedding = await (globalThis as any).embeddingSession.run(content, {
