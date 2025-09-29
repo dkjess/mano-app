@@ -21,6 +21,15 @@ import {
 import { extractProfileDataWithContext } from '../_shared/context-aware-profile-enhancement.ts'
 import { LearningSystem } from '../_shared/learning-system.ts'
 
+// Type definitions
+interface ProfileSuggestion {
+  id: string;
+  type: string;
+  content: string;
+  confidence: number;
+  target_person: string;
+}
+
 // PostHog server-side tracking
 const POSTHOG_KEY = Deno.env.get('POSTHOG_KEY')
 const POSTHOG_HOST = Deno.env.get('POSTHOG_HOST') || 'https://eu.posthog.com'
@@ -361,6 +370,7 @@ interface Person {
   goals?: string | null;
   strengths?: string | null;
   challenges?: string | null;
+  is_self?: boolean | null;
 }
 
 // System prompts - optimized for conversational brevity
@@ -1106,7 +1116,7 @@ function buildPersonSystemPrompt(
   profileContext?: string,
   isSelf?: boolean
 ): string {
-  const contextText = managementContext ? formatContextForPrompt(managementContext) : ''
+  const contextText = managementContext ? formatContextForPrompt(managementContext, 'general') : ''
   const historyText = conversationHistory
     .slice(-10)
     .map((msg: any) => `${msg.is_user ? 'Manager' : 'Mano'}: ${msg.content}`)
@@ -1572,7 +1582,7 @@ serve(async (req) => {
         const lastMessage = messages[messages.length - 1];
         
         // Extract attachments from the last user message (AI SDK v4 format)
-        const attachments = lastMessage?.experimental_attachments || [];
+        const attachments = (lastMessage as any)?.experimental_attachments || [];
         
         // Process attachments if present
         perf.checkpoint('attachment_processing_start');
@@ -1713,6 +1723,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
+
+    // Initialize variables for regular chat path (to match streaming path)
+    const messageId: string | undefined = undefined;
+    const processedFiles: Array<{name: string; contentType: string; content: string; size: number}> = [];
 
     // Initialize onboarding service
     const onboardingService = new OnboardingService(supabase)
