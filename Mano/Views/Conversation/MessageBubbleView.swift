@@ -106,6 +106,7 @@ struct MessageBubbleView: View {
             isUser: true,
             personId: nil,
             topicId: nil,
+            conversationId: nil,
             createdAt: Date()
         )
     )

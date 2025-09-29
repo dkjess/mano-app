@@ -26,7 +26,10 @@ struct ConversationView: View {
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isInputFocused: Bool
     @State private var newMessageIds: Set<UUID> = []
-    
+    @State private var showingConversationHistory = false
+    @State private var showingClearConfirmation = false
+    @State private var showingNewConversationSheet = false
+
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
     }
@@ -43,11 +46,65 @@ struct ConversationView: View {
         }
         .navigationTitle(person.name)
         .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button(action: {
+                        showingConversationHistory = true
+                    }) {
+                        Label("Conversation History", systemImage: "clock.arrow.circlepath")
+                    }
+
+                    Button(action: {
+                        showingNewConversationSheet = true
+                    }) {
+                        Label("Start New Conversation", systemImage: "plus.message")
+                    }
+
+                    Divider()
+
+                    Button(action: {
+                        exportConversation()
+                    }) {
+                        Label("Export Conversation", systemImage: "square.and.arrow.up")
+                    }
+
+                    Button(action: {
+                        showingClearConfirmation = true
+                    }) {
+                        Label("Clear Messages", systemImage: "trash")
+                    }
+                    .foregroundColor(.red)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+        }
         .task {
             await loadMessages()
         }
         .onDisappear {
             userScrollTimer?.invalidate()
+        }
+        .sheet(isPresented: $showingConversationHistory) {
+            ConversationHistoryView(person: person)
+        }
+        .sheet(isPresented: $showingNewConversationSheet) {
+            NewConversationSheet(person: person, onNewConversation: {
+                Task {
+                    await startNewConversation()
+                }
+            })
+        }
+        .alert("Clear Conversation", isPresented: $showingClearConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Clear", role: .destructive) {
+                Task {
+                    await clearMessages()
+                }
+            }
+        } message: {
+            Text("This will permanently delete all messages in this conversation. This action cannot be undone.")
         }
     }
     
@@ -78,6 +135,12 @@ struct ConversationView: View {
                 onSendMessage: sendMessage
             )
         }
+        .onAppear {
+            // Auto-focus input when entering empty conversation
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                isInputFocused = true
+            }
+        }
     }
     
     private var conversationContent: some View {
@@ -94,7 +157,7 @@ struct ConversationView: View {
                                 .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
                                 .onAppear {
                                     if newMessageIds.contains(message.id) {
-                                        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                        _ = withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
                                             newMessageIds.remove(message.id)
                                         }
                                     }
@@ -113,6 +176,7 @@ struct ConversationView: View {
                                         isUser: false,
                                         personId: streamingMsg.personId,
                                         topicId: streamingMsg.topicId,
+                                        conversationId: streamingMsg.conversationId,
                                         createdAt: streamingMsg.createdAt
                                     ),
                                     isStreaming: true
@@ -192,7 +256,7 @@ struct ConversationView: View {
                         // When keyboard appears, scroll to keep last message visible
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                             withAnimation(.easeInOut(duration: 0.3)) {
-                                if let streamingMsg = streamingMessage {
+                                if streamingMessage != nil {
                                     if !streamingText.isEmpty {
                                         proxy.scrollTo("streaming", anchor: .top)
                                     } else if contextualThinkingMessage != nil {
@@ -258,6 +322,9 @@ struct ConversationView: View {
         
         messageText = ""
         isSending = true
+
+        // Unfocus input after sending message
+        isInputFocused = false
         
         let userMessage = Message(
             id: UUID(),
@@ -266,6 +333,7 @@ struct ConversationView: View {
             isUser: true,
             personId: person.id,
             topicId: nil,
+            conversationId: nil,
             createdAt: Date()
         )
 
@@ -281,6 +349,7 @@ struct ConversationView: View {
             isUser: false,
             personId: person.id,
             topicId: nil,
+            conversationId: nil,
             createdAt: Date()
         )
         streamingText = ""
@@ -308,20 +377,6 @@ struct ConversationView: View {
                 }
                 
                 await MainActor.run {
-                    if !streamingText.isEmpty {
-                        // Remove the typing cursor from the final message
-                        let cleanContent = streamingText.replacingOccurrences(of: "|", with: "")
-                        let finalMessage = Message(
-                            id: aiMessageId,
-                            userId: SupabaseManager.shared.user?.id ?? UUID(),
-                            content: cleanContent,
-                            isUser: false,
-                            personId: person.id,
-                            topicId: nil,
-                            createdAt: Date()
-                        )
-                        messages.append(finalMessage)
-                    }
                     streamingMessage = nil
                     streamingText = ""
                     contextualThinkingMessage = nil
@@ -344,6 +399,346 @@ struct ConversationView: View {
             await MainActor.run {
                 isSending = false
             }
+        }
+    }
+
+    // MARK: - Conversation Menu Actions
+
+    private func exportConversation() {
+        let conversationText = messages
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { message in
+                let sender = message.isUser ? "You" : person.name
+                let timestamp = DateFormatter.localizedString(
+                    from: message.createdAt,
+                    dateStyle: .short,
+                    timeStyle: .short
+                )
+                return "\(sender) (\(timestamp)): \(message.content)"
+            }
+            .joined(separator: "\n\n")
+
+        let activityVC = UIActivityViewController(
+            activityItems: [conversationText],
+            applicationActivities: nil
+        )
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityVC, animated: true)
+        }
+    }
+
+    private func startNewConversation() async {
+        // Clear current messages and start fresh
+        messages = []
+        streamingMessage = nil
+        streamingText = ""
+        contextualThinkingMessage = nil
+        analysisResult = nil
+
+        // Auto-focus input for new conversation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isInputFocused = true
+        }
+
+        // Create a new active conversation for this person
+        // This will be handled by the conversation manager when the next message is sent
+        print("✅ Ready for new conversation with \(person.name)")
+    }
+
+    private func clearMessages() async {
+        // Clear messages from the current conversation
+        // For now, we'll just clear the local state - in the future we might want to
+        // delete from the database as well
+        messages = []
+        streamingMessage = nil
+        streamingText = ""
+        contextualThinkingMessage = nil
+        analysisResult = nil
+
+        // Auto-focus input after clearing messages
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            isInputFocused = true
+        }
+
+        print("✅ Messages cleared for \(person.name)")
+    }
+}
+
+// MARK: - Supporting Views
+
+struct ConversationHistoryView: View {
+    let person: Person
+    @State private var conversations: [Conversation] = []
+    @State private var isLoading = true
+    @State private var selectedConversation: Conversation? = nil
+    @State private var conversationMessages: [UUID: [Message]] = [:]
+    @ObservedObject private var supabase = SupabaseManager.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            Group {
+                if isLoading {
+                    ProgressView("Loading conversation history...")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if conversations.isEmpty {
+                    ContentUnavailableView(
+                        "No Conversation History",
+                        systemImage: "clock.arrow.circlepath",
+                        description: Text("You haven't had any previous conversations with \(person.name) yet.")
+                    )
+                } else {
+                    conversationList
+                }
+            }
+            .navigationTitle("History")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+            }
+            .task {
+                await loadConversationHistory()
+            }
+            .sheet(item: $selectedConversation) { conversation in
+                ConversationDetailView(
+                    conversation: conversation,
+                    person: person,
+                    messages: conversationMessages[conversation.id] ?? []
+                )
+            }
+        }
+    }
+
+    private var conversationList: some View {
+        List {
+            ForEach(conversations) { conversation in
+                ConversationHistoryRow(
+                    conversation: conversation,
+                    person: person,
+                    onTap: {
+                        Task {
+                            await loadMessages(for: conversation)
+                            selectedConversation = conversation
+                        }
+                    }
+                )
+            }
+        }
+    }
+
+    private func loadConversationHistory() async {
+        isLoading = true
+        do {
+            conversations = try await supabase.conversations.fetchConversations(for: person.id)
+            print("✅ Loaded \(conversations.count) conversations for \(person.name)")
+        } catch {
+            print("❌ Failed to load conversation history: \(error)")
+        }
+        isLoading = false
+    }
+
+    private func loadMessages(for conversation: Conversation) async {
+        do {
+            let messages = try await supabase.conversations.fetchMessagesForConversation(conversation.id)
+            conversationMessages[conversation.id] = messages
+            print("✅ Loaded \(messages.count) messages for conversation \(conversation.id)")
+        } catch {
+            print("❌ Failed to load messages for conversation: \(error)")
+        }
+    }
+}
+
+struct ConversationHistoryRow: View {
+    let conversation: Conversation
+    let person: Person
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Text(conversationTitle)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                        .lineLimit(2)
+
+                    Spacer()
+
+                    if conversation.isActive {
+                        Text("Active")
+                            .font(.caption)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 2)
+                            .background(Color.green.opacity(0.2))
+                            .foregroundColor(.green)
+                            .cornerRadius(4)
+                    }
+                }
+
+                HStack {
+                    Text("Started: \(DateFormatter.conversationDate.string(from: conversation.createdAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Spacer()
+
+                    Text("Updated: \(DateFormatter.conversationDate.string(from: conversation.updatedAt))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+
+    private var conversationTitle: String {
+        conversation.title ?? "Conversation with \(person.name)"
+    }
+}
+
+struct ConversationDetailView: View {
+    let conversation: Conversation
+    let person: Person
+    let messages: [Message]
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ScrollView {
+                VStack(spacing: 12) {
+                    if messages.isEmpty {
+                        ContentUnavailableView(
+                            "No Messages",
+                            systemImage: "message.slash",
+                            description: Text("This conversation has no messages.")
+                        )
+                        .padding()
+                    } else {
+                        ForEach(messages.sorted { $0.createdAt < $1.createdAt }) { message in
+                            MessageBubbleView(message: message, isStreaming: false)
+                                .padding(.horizontal)
+                        }
+                    }
+                }
+                .padding(.top)
+            }
+            .navigationTitle(conversationTitle)
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: exportConversation) {
+                        Image(systemName: "square.and.arrow.up")
+                    }
+                }
+            }
+        }
+    }
+
+    private var conversationTitle: String {
+        conversation.title ?? "Conversation with \(person.name)"
+    }
+
+    private func exportConversation() {
+        let conversationText = messages
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { message in
+                let sender = message.isUser ? "You" : person.name
+                let timestamp = DateFormatter.localizedString(
+                    from: message.createdAt,
+                    dateStyle: .short,
+                    timeStyle: .short
+                )
+                return "\(sender) (\(timestamp)): \(message.content)"
+            }
+            .joined(separator: "\n\n")
+
+        let activityVC = UIActivityViewController(
+            activityItems: [conversationText],
+            applicationActivities: nil
+        )
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
+            window.rootViewController?.present(activityVC, animated: true)
+        }
+    }
+}
+
+extension DateFormatter {
+    static let conversationDate: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter
+    }()
+}
+
+struct NewConversationSheet: View {
+    let person: Person
+    let onNewConversation: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                VStack(spacing: 8) {
+                    Image(systemName: "plus.message.fill")
+                        .font(.system(size: 60))
+                        .foregroundColor(.accentColor)
+
+                    Text("Start New Conversation")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+
+                    Text("This will start a fresh conversation with \(person.name). Your current conversation will be saved in history.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                Spacer()
+
+                VStack(spacing: 12) {
+                    Button(action: {
+                        onNewConversation()
+                        dismiss()
+                    }) {
+                        Text("Start New Conversation")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.accentColor)
+                            .cornerRadius(12)
+                    }
+
+                    Button(action: {
+                        dismiss()
+                    }) {
+                        Text("Cancel")
+                            .font(.headline)
+                            .foregroundColor(.accentColor)
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .padding()
+            .navigationTitle("New Conversation")
+            .navigationBarTitleDisplayMode(.large)
         }
     }
 }

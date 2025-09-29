@@ -228,6 +228,7 @@ struct PeopleListView: View {
 
 struct PersonRowView: View {
     let person: Person
+    @ObservedObject private var conversationLoader = PersonConversationInfoLoader()
 
     var body: some View {
         HStack {
@@ -246,6 +247,30 @@ struct PersonRowView: View {
                     Text(role)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
+
+                // Show conversation info
+                if let conversationInfo = conversationLoader.conversationInfo[person.id] {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(conversationInfo.displayTitle)
+                            .font(.caption)
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        if let subtitle = conversationInfo.displaySubtitle {
+                            Text(subtitle)
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                } else if conversationLoader.isLoading.contains(person.id) {
+                    HStack(spacing: 4) {
+                        ProgressView()
+                            .scaleEffect(0.6)
+                        Text("Loading...")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
                 }
 
                 HStack {
@@ -279,6 +304,9 @@ struct PersonRowView: View {
             }
         }
         .padding(.vertical, 4)
+        .task {
+            await conversationLoader.loadConversationInfo(for: person.id)
+        }
     }
     
     private var relationshipIcon: String {
