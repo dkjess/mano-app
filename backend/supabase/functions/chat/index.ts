@@ -25,9 +25,11 @@ import { LearningSystem } from '../_shared/learning-system.ts'
 interface ProfileSuggestion {
   id: string;
   type: string;
+  title?: string;
   content: string;
-  confidence: number;
-  target_person: string;
+  confidence?: number;
+  target_person?: string;
+  preview?: string;
 }
 
 // PostHog server-side tracking
@@ -921,7 +923,7 @@ async function handleStreamingChat({
         managementContext,
         userProfile,
         profileContext,
-        person.is_self
+        !!person.is_self
       )
     }
 
@@ -990,7 +992,7 @@ async function handleStreamingChat({
               userMessage,
               person_id,
               user.id,
-              isTopicConversation,
+              !!isTopicConversation,
               actualTopicId,
               processedFiles,
               supabase
@@ -1042,7 +1044,7 @@ async function handleStreamingChat({
             fullResponse,
             person_id,
             user.id,
-            isTopicConversation,
+            !!isTopicConversation,
             actualTopicId,
             userMessage,
             managementContext,

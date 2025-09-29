@@ -165,12 +165,12 @@ serve(async (req) => {
               is_completed: item.is_completed,
               is_hidden: item.is_hidden,
               position_in_profile: item.position_in_profile,
-              completed_at: !wasCompleted && isNowCompleted ? new Date().toISOString() : 
-                           wasCompleted && !isNowCompleted ? null : 
-                           existingItem?.completed_at,
-              hidden_at: !existingItem?.is_hidden && item.is_hidden ? new Date().toISOString() : 
+              completed_at: !wasCompleted && isNowCompleted ? new Date().toISOString() :
+                           wasCompleted && !isNowCompleted ? null :
+                           (existingItem as any)?.completed_at,
+              hidden_at: !existingItem?.is_hidden && item.is_hidden ? new Date().toISOString() :
                         existingItem?.is_hidden && !item.is_hidden ? null :
-                        existingItem?.hidden_at,
+                        (existingItem as any)?.hidden_at,
             })
             .eq('id', item.id)
             .eq('created_by', user.id)
