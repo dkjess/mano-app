@@ -98,15 +98,56 @@ Self persons get unique conversation starters:
 - "What successes should I acknowledge?"
 
 ## Backend Development
-```bash
-# Deploy functions
-supabase functions deploy
 
-# View logs
+### 🚨 CRITICAL: Deployment Workflow Requirements
+
+**NEVER deploy Edge Functions directly to production!** Always follow the proper CI/CD workflow:
+
+✅ **CORRECT Deployment Process:**
+```bash
+# 1. Make changes to Edge Functions locally
+# 2. Test locally with local Supabase
+cd backend
+supabase functions serve --env-file .env.local
+
+# 3. Commit changes and create PR
+git add .
+git commit -m "Description of changes"
+git push origin feature-branch
+
+# 4. Create PR for review
+gh pr create --title "Title" --body "Description"
+
+# 5. Merge PR - CI/CD automatically deploys to production
+```
+
+❌ **FORBIDDEN Commands (DO NOT USE):**
+```bash
+# These commands bypass review and CI/CD - NEVER USE:
+supabase functions deploy --project-ref zfroutbzdkhivnpiezho  # Direct production deploy
+supabase functions deploy  # If linked to production
+```
+
+### Local Development Commands
+```bash
+# View logs from local functions
 supabase functions logs chat
 
-# Reset and recreate test data
+# Reset and recreate test data locally
 npm run seed:dev reset && npm run seed:dev
+
+# Test functions locally only
+cd backend
+supabase functions serve --env-file .env.local
+```
+
+### Production Monitoring
+```bash
+# View production logs (read-only)
+supabase functions logs chat --project-ref zfroutbzdkhivnpiezho
+
+# Check production function status
+supabase projects list
 ```
 
 ### iOS Development
@@ -174,9 +215,11 @@ curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
 - **Chat Prompts**: Self conversations use a dedicated coaching-focused prompt for personal growth
 - **Device Testing**: Always start ngrok for device testing - the automated setup script handles this
 
-### ⚠️ CRITICAL: Production Database Safety
-**NEVER reset production database without explicit confirmation!**
+### ⚠️ CRITICAL: Production Safety Policies
 
+**NEVER make direct production changes without proper review process!**
+
+#### Database Safety
 ✅ **Safe Commands:**
 ```bash
 npm run reset          # Protected script - blocks production resets
@@ -189,9 +232,24 @@ npm run reset:unsafe   # Bypasses protection - use with extreme caution
 supabase db reset --linked  # WILL DESTROY PRODUCTION DATA
 ```
 
+#### Edge Function Deployment Safety
+✅ **Safe Process:**
+```bash
+# Always use PR-based deployment
+git commit && git push && gh pr create
+# Wait for review and CI/CD deployment
+```
+
+❌ **Forbidden Direct Deployments:**
+```bash
+supabase functions deploy --project-ref zfroutbzdkhivnpiezho  # BYPASSES REVIEW
+supabase functions deploy  # If linked to production - DANGEROUS
+```
+
 **Production Project ID:** `zfroutbzdkhivnpiezho`
-- The safe reset script automatically detects if you're linked to production
-- Always run `supabase unlink` to return to local development after production operations
+- All production changes must go through PR review and CI/CD
+- Direct deployments bypass important safety checks and code review
+- Always run `supabase unlink` to return to local development after any production operations
 
 ### Troubleshooting
 - **Edge Functions authentication errors:** Always use `--env-file .env.local`
