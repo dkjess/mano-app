@@ -37,6 +37,37 @@ git commit && git push        # NEVER push without creating a branch first
 
 **Exception:** Only push to main if explicitly instructed by the user with confirmation.
 
+## 🏷️ CRITICAL: PR Deployment Labels
+
+**MANDATORY:** Every PR MUST include ONE deployment type badge at the very top of the description.
+
+### Deployment Types:
+
+**📱 App Only - Rebuild Required**
+- SwiftUI/iOS UI changes
+- App logic changes
+- **Jess needs to:** Rebuild app in Xcode (⇧⌘K then ⌘R)
+- **No backend deployment**
+
+**☁️ Backend Only - Auto-Deploy**
+- Edge Functions changes
+- Database migrations
+- API/backend logic
+- **Jess needs to:** Just merge - auto-deploys via CI/CD
+- **No app rebuild needed**
+
+**🔄 App + Backend - Both Required**
+- Full-stack features
+- Schema + UI changes
+- **Jess needs to:** Merge (backend auto-deploys) + rebuild app
+
+**📚 Docs/Config Only - No Action Required**
+- Documentation updates
+- Config/workflow files
+- **Jess needs to:** Just merge - nothing to deploy
+
+**Usage:** Copy the appropriate badge from `PR_TEMPLATE.md` into every PR description.
+
 ## Project Overview
 
 **Mano** is an AI-powered companion application for people managers. This repository contains both:
