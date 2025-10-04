@@ -85,17 +85,20 @@ cd backend
 
 **Manual Setup:**
 ```bash
-# 1. Start Supabase services
+# 1. Install git hooks for workflow safety
+./scripts/install-git-hooks.sh
+
+# 2. Start Supabase services
 cd backend
 supabase start
 
-# 2. CRITICAL: Serve Edge Functions with environment variables
+# 3. CRITICAL: Serve Edge Functions with environment variables
 supabase functions serve --env-file .env.local
 
-# 3. Start ngrok for device testing (in separate terminal)
+# 4. Start ngrok for device testing (in separate terminal)
 ngrok http 54321
 
-# 4. Seed test data (includes self person creation)
+# 5. Seed test data (includes self person creation)
 npm run seed:dev
 
 # If self person is missing, run the fix script
@@ -140,20 +143,25 @@ Self persons get unique conversation starters:
 
 ✅ **CORRECT Deployment Process:**
 ```bash
-# 1. Make changes to Edge Functions locally
-# 2. Test locally with local Supabase
+# 1. Create feature branch
+git checkout -b feature/your-feature-name
+
+# 2. Make changes to Edge Functions locally
+# 3. Test locally with local Supabase
 cd backend
 supabase functions serve --env-file .env.local
 
-# 3. Commit changes and create PR
+# 4. Commit changes to feature branch
 git add .
 git commit -m "Description of changes"
-git push origin feature-branch
 
-# 4. Create PR for review
+# 5. Push feature branch (NOT main)
+git push origin feature/your-feature-name
+
+# 6. Create PR for review
 gh pr create --title "Title" --body "Description"
 
-# 5. Merge PR - CI/CD automatically deploys to production
+# 7. Merge PR - CI/CD automatically deploys to production
 ```
 
 ❌ **FORBIDDEN Commands (DO NOT USE):**
@@ -270,8 +278,12 @@ supabase db reset --linked  # WILL DESTROY PRODUCTION DATA
 #### Edge Function Deployment Safety
 ✅ **Safe Process:**
 ```bash
-# Always use PR-based deployment
-git commit && git push && gh pr create
+# Always use feature branch workflow
+git checkout -b feature/your-change
+git add .
+git commit -m "Description"
+git push origin feature/your-change
+gh pr create
 # Wait for review and CI/CD deployment
 ```
 
@@ -449,10 +461,17 @@ struct Message: Codable, Identifiable {
 **Test Commands:**
 ```bash
 cd backend
+
+# Unit tests (when available)
 npm run test                # Run all tests
-npm run test:watch          # Run tests in watch mode  
+npm run test:watch          # Run tests in watch mode
 npm run test:coverage       # Run tests with coverage report
 npm run test:integration    # Run integration tests
+
+# Integration test scripts
+deno run --allow-net --allow-env scripts/test-person-creation.ts  # Test person API
+swift scripts/test-swift-decode.swift                              # Test Swift decoder
+./scripts/test-e2e-person-creation.sh                             # End-to-end person creation
 ```
 
 **Testing Requirements:**
@@ -541,13 +560,12 @@ xcodebuild test -project Mano.xcodeproj -scheme Mano -destination 'platform=iOS 
 **Test User**: `dev@mano.local` / `dev123456`
 **Mock APIs**: All external APIs (Anthropic, etc.) should be mocked in tests
 
-**Test Utilities Available:**
-- `createTestUser()` - Generate test user objects
-- `createTestPerson()` - Generate test person objects  
-- `createTestMessage()` - Generate test message objects
-- `makeTestRequest()` - Helper for HTTP endpoint testing
-- `assertValidPerson()` - Validate person object structure
-- `assertValidMessage()` - Validate message object structure
+**Test Scripts Available:**
+- `backend/scripts/test-person-creation.ts` - Test person creation API with started_working_together field
+- `backend/scripts/test-swift-decode.swift` - Test Swift custom decoder for date-only strings
+- `backend/scripts/test-e2e-person-creation.sh` - End-to-end test (backend + Swift + iOS build)
+- `backend/scripts/test-is-self.ts` - Test self-reflection person functionality
+- `backend/scripts/fix-self-person.ts` - Fix missing self persons for existing users
 
 ### CI/CD Integration
 
