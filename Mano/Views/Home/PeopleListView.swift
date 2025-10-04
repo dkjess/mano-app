@@ -45,25 +45,50 @@ struct PeopleListView: View {
                         .padding(.bottom, 40)
                     }
                 } else {
-                    List(people) { person in
-                        if isEditMode {
-                            PersonEditRowView(
-                                person: person,
-                                onEdit: {
-                                    personToEdit = person
-                                },
-                                onDelete: {
-                                    // Prevent deletion of is_self person
-                                    if person.isSelf != true {
-                                        personToDelete = person
-                                        showingDeleteConfirmation = true
+                    List {
+                        // Self person section
+                        Section {
+                            ForEach(people.filter { $0.isSelf == true }) { person in
+                                if isEditMode {
+                                    PersonEditRowView(
+                                        person: person,
+                                        onEdit: {
+                                            personToEdit = person
+                                        },
+                                        onDelete: {
+                                            // Self person can't be deleted
+                                        }
+                                    )
+                                } else {
+                                    NavigationLink(destination: ConversationView(person: person)) {
+                                        PersonRowView(person: person)
                                     }
                                 }
-                            )
-                        } else {
-                            NavigationLink(destination: ConversationView(person: person)) {
-                                PersonRowView(person: person)
                             }
+                        }
+
+                        // Team section
+                        Section {
+                            ForEach(people.filter { $0.isSelf != true }) { person in
+                                if isEditMode {
+                                    PersonEditRowView(
+                                        person: person,
+                                        onEdit: {
+                                            personToEdit = person
+                                        },
+                                        onDelete: {
+                                            personToDelete = person
+                                            showingDeleteConfirmation = true
+                                        }
+                                    )
+                                } else {
+                                    NavigationLink(destination: ConversationView(person: person)) {
+                                        PersonRowView(person: person)
+                                    }
+                                }
+                            }
+                        } header: {
+                            Text("My People")
                         }
                     }
                 }
