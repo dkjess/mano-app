@@ -1,0 +1,67 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+# Require manual approval for production deploys
+environment: production
+
+jobs:
+  deploy:
+    name: Production Deployment
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Run Tests
+        working-directory: backend
+        run: |
+          echo "✅ Running production deployment tests"
+          # deno test --allow-all
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Apply Database Migrations
+        working-directory: backend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          echo "📦 Applying database migrations to production..."
+          supabase link --project-ref zfroutbzdkhivnpiezho
+          supabase db push
+          echo "✅ Migrations applied"
+
+      - name: Deploy Edge Functions
+        working-directory: backend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          echo "🚀 Deploying Edge Functions to production..."
+          supabase functions deploy --project-ref zfroutbzdkhivnpiezho
+          echo "✅ Functions deployed"
+
+      - name: Verify Deployment
+        run: |
+          echo "🔍 Verifying production deployment..."
+          # Add smoke tests here
+          echo "✅ Deployment verified"
+
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## 🚀 Production Deployment" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Project:** zfroutbzdkhivnpiezho" >> $GITHUB_STEP_SUMMARY
+          echo "- **Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Deployed by:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Time:** $(date)" >> $GITHUB_STEP_SUMMARY

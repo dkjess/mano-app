@@ -1,0 +1,79 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: ['**']
+
+jobs:
+  backend-tests:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Run Backend Tests
+        working-directory: backend
+        run: |
+          # Run tests when available
+          echo "Backend tests will run here"
+          # deno test --allow-all
+
+  ios-build:
+    name: iOS Build Test
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build iOS App
+        run: |
+          xcodebuild -project Mano.xcodeproj \
+            -scheme Mano \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            build
+
+  branch-protection:
+    name: Enforce Branch Rules
+    runs-on: ubuntu-latest
+    if: github.base_ref == 'main'
+    steps:
+      - name: Check if merge is from staging
+        run: |
+          if [ "${{ github.head_ref }}" != "staging" ]; then
+            echo "❌ ERROR: Only staging branch can merge to main"
+            echo "Current branch: ${{ github.head_ref }}"
+            echo ""
+            echo "Proper workflow:"
+            echo "1. Merge feature branches to staging"
+            echo "2. Validate in staging environment"
+            echo "3. Then merge staging to main for production"
+            exit 1
+          fi
+          echo "✅ Staging → Main merge allowed"
+
+  lint-commits:
+    name: Validate Commit Messages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for sensitive data
+        run: |
+          # Check that no API keys or secrets are committed
+          if git diff origin/${{ github.base_ref }}...HEAD | grep -E '(ANTHROPIC_API_KEY|SUPABASE_SERVICE_ROLE_KEY|password|secret)' | grep -v 'env.example'; then
+            echo "❌ Possible secret detected in commit"
+            exit 1
+          fi
+          echo "✅ No secrets detected"
