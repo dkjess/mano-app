@@ -13,34 +13,26 @@ struct ThinkingBubbleView: View {
     @State private var thinkingWord = ""
     
     let thinkingWords = [
-        "Thinking", "Pondering", "Contemplating", "Considering", "Reflecting",
-        "Reasoning", "Deliberating", "Mulling", "Musing", "Brooding",
-        "Ruminating", "Meditating", "Concentrating", "Focusing", "Analysing",
-        "Examining", "Studying", "Investigating", "Exploring", "Evaluating",
-        "Assessing", "Judging", "Weighing", "Scrutinising", "Appraising",
-        "Reviewing", "Remembering", "Recalling", "Reminiscing", "Recollecting",
-        "Memorising", "Puzzling", "Brainstorming", "Strategising", "Planning",
-        "Calculating", "Computing", "Figuring", "Solving", "Imagining",
-        "Envisioning", "Conceiving", "Dreaming", "Fantasising", "Visualising",
-        "Learning", "Comprehending", "Grasping", "Absorbing", "Processing",
-        "Digesting", "Deciding", "Choosing", "Selecting", "Determining",
-        "Resolving", "Philosophising", "Theorising", "Hypothesising", "Speculating",
-        "Supposing", "Assuming", "Presuming", "Surmising", "Inferring",
-        "Deducing", "Combobulating", "Cogitating", "Percolating", "Marinating",
-        "Stewing", "Brewing", "Simmering", "Churning", "Ticking over",
-        "Whirring", "Scheming", "Plotting", "Cooking up", "Hatching",
-        "Sussing out", "Clocking", "Twigging", "Cottoning on", "Tumbling to",
-        "Clicking", "Connecting", "Brain-storming", "Mind-melding", "Thought-spinning",
-        "Idea-brewing", "Concept-cooking", "Notion-nurturing", "Brain-percolating", "Grey-matter-grinding",
-        "Synapse-firing", "Neuron-networking", "Thinkifying", "Ponderfying", "Cogitativating",
-        "Contemplifying", "Brain-noodling", "Mind-wrestling", "Thought-wrangling", "Idea-juggling",
-        "Concept-massaging", "Brain-gymnastics-ing", "Wool-gathering", "Day-dreaming", "Star-gazing",
-        "Cloud-watching", "Navel-gazing", "Chin-stroking", "Head-scratching", "Brow-furrowing",
-        "Hmm-ing", "Umm-ing", "Ahh-ing", "Lightbulb-ing", "Eureka-ing",
-        "Aha-ing", "Buffering", "Loading", "Number-crunching", "Data-mining",
-        "Algorithm-ing", "Slow-cooking", "Braising", "Fermenting", "Distilling",
-        "Smarticulating", "Intelligencing", "Wisdomising", "Brillianting", "Genius-ing",
-        "Einstein-ing", "Sherlock-ing"
+        // Quirky favorites
+        "Thinking", "Pondering", "Contemplating", "Sizzling", "Vibing",
+        "Percolating", "Marinating", "Brewing", "Scheming", "Noodling",
+
+        // Made-up delights
+        "Combobulating", "Thinkifying", "Ponderfying", "Cogitativating",
+        "Contemplifying", "Smarticulating", "Intelligencing", "Wisdomising",
+
+        // Brain activities
+        "Brain-noodling", "Mind-melding", "Thought-spinning", "Idea-brewing",
+        "Synapse-firing", "Neuron-networking", "Grey-matter-grinding",
+
+        // Fun processes
+        "Slow-cooking", "Fermenting", "Distilling", "Tinkering",
+
+        // Genius vibes
+        "Brillianting", "Genius-ing", "Einstein-ing", "Sherlock-ing",
+
+        // Delightful moments
+        "Lightbulb-ing", "Eureka-ing", "Aha-ing", "Clicking"
     ]
     
     var body: some View {
