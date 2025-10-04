@@ -325,6 +325,31 @@ async function handlePersonUpdate(req: Request, supabase: any, user: any, person
     const body: PersonUpdateRequest = await req.json()
     console.log('📝 Request body received:', JSON.stringify(body, null, 2))
 
+    // Check if this is a self person
+    const { data: existingPerson, error: fetchError } = await supabase
+      .from('people')
+      .select('is_self')
+      .eq('id', personId)
+      .eq('user_id', user.id)
+      .single()
+
+    if (fetchError || !existingPerson) {
+      return new Response(JSON.stringify({ error: 'Person not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Prevent updating name and relationship_type for self persons
+    if (existingPerson.is_self) {
+      if (body.name !== undefined || body.relationship_type !== undefined) {
+        return new Response(JSON.stringify({ error: 'Cannot change name or relationship type of self person. Use user profile settings instead.' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        })
+      }
+    }
+
     // Only update fields that exist in the people table
     // Map the request data to the actual database columns
     const updateData: any = {
@@ -380,11 +405,11 @@ async function handlePersonUpdate(req: Request, supabase: any, user: any, person
 async function handlePersonDelete(supabase: any, user: any, personId: string) {
   try {
     console.log(`🗑️ Starting person deletion for: ${personId}`)
-    
+
     // Check if person exists and belongs to user
     const { data: person, error: fetchError } = await supabase
       .from('people')
-      .select('id, name')
+      .select('id, name, is_self')
       .eq('id', personId)
       .eq('user_id', user.id)
       .single()
@@ -393,6 +418,15 @@ async function handlePersonDelete(supabase: any, user: any, personId: string) {
       console.log(`❌ Person not found or fetch error:`, fetchError)
       return new Response(JSON.stringify({ error: 'Person not found' }), {
         status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      })
+    }
+
+    // Prevent deletion of self person
+    if (person.is_self) {
+      console.log(`❌ Attempted to delete self person: ${person.name}`)
+      return new Response(JSON.stringify({ error: 'Cannot delete your own profile person' }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }

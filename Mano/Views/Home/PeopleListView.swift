@@ -45,24 +45,41 @@ struct PeopleListView: View {
                         .padding(.bottom, 40)
                     }
                 } else {
-                    List(people) { person in
-                        if isEditMode {
-                            PersonEditRowView(
-                                person: person,
-                                onEdit: {
-                                    personToEdit = person
-                                },
-                                onDelete: {
-                                    // Prevent deletion of is_self person
-                                    if person.isSelf != true {
-                                        personToDelete = person
-                                        showingDeleteConfirmation = true
+                    List {
+                        ForEach(people) { person in
+                            if isEditMode {
+                                PersonEditRowView(
+                                    person: person,
+                                    onEdit: {
+                                        personToEdit = person
+                                    },
+                                    onDelete: {
+                                        // Prevent deletion of is_self person
+                                        if person.isSelf != true {
+                                            personToDelete = person
+                                            showingDeleteConfirmation = true
+                                        }
                                     }
+                                )
+                                .listRowSeparator(.hidden)
+                            } else {
+                                NavigationLink(destination: ConversationView(person: person)) {
+                                    PersonRowView(person: person)
                                 }
-                            )
-                        } else {
-                            NavigationLink(destination: ConversationView(person: person)) {
-                                PersonRowView(person: person)
+                                .listRowSeparator(.hidden)
+                            }
+
+                            // Add separator after self person
+                            if person.isSelf == true {
+                                HStack {
+                                    Text("My Team")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.leading, 4)
+                                    Spacer()
+                                }
+                                .listRowSeparator(.visible)
+                                .listRowBackground(Color.clear)
                             }
                         }
                     }
