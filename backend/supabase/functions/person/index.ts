@@ -11,6 +11,7 @@ interface PersonCreateRequest {
   context?: string // Why are they being added
   current_situation?: string // Current context about this person
   generate_initial_message?: boolean
+  started_working_together?: string // ISO date string
 }
 
 interface PersonUpdateRequest {
@@ -157,6 +158,7 @@ async function handlePersonCreate(req: Request, supabase: any, user: any) {
       relationship_type: body.relationship_type,
       team: body.team || null,
       is_self: false, // Always false for manually created persons
+      started_working_together: body.started_working_together ? new Date(body.started_working_together).toISOString() : null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     })
@@ -477,6 +479,28 @@ async function generateInitialMessage(params: {
 }): Promise<string> {
   const { person, context, current_situation, supabase, user } = params
 
+  // Calculate relationship duration if started_working_together is available
+  let relationshipDuration = null
+  if (person.started_working_together) {
+    const startDate = new Date(person.started_working_together)
+    const now = new Date()
+    const diffYears = (now.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25)
+
+    if (diffYears < 0.1) {
+      relationshipDuration = "just started working together"
+    } else if (diffYears < 0.5) {
+      relationshipDuration = "a few months"
+    } else if (diffYears < 1) {
+      relationshipDuration = "about half a year"
+    } else if (diffYears < 2) {
+      relationshipDuration = "about a year"
+    } else if (diffYears < 5) {
+      relationshipDuration = `about ${Math.floor(diffYears)} years`
+    } else {
+      relationshipDuration = `over ${Math.floor(diffYears)} years`
+    }
+  }
+
   // Get user profile for personalization
   const { data: userProfile } = await supabase
     .from('user_profiles')
@@ -508,28 +532,36 @@ async function generateInitialMessage(params: {
     apiKey: Deno.env.get('ANTHROPIC_API_KEY')!
   })
 
-  const systemPrompt = `You are Mano, an AI management coach. You're starting a conversation with a manager about a team member they just added.
+  // Get user's name for personalization
+  const userName = userProfile?.preferred_name || 'there'
 
-Write a natural, direct message from Mano to the manager that:
-1. Briefly acknowledges they added this person
-2. Asks ONE specific, valuable question to get the conversation started
-3. Feels like a real conversation starter, not a prompt
+  const systemPrompt = `You are Mano, a thought partner for managers. ${userName} just added ${messageContext.person_name} to their network.
 
-Keep it conversational and under 2 sentences. Write as if you're Mano speaking directly to the manager.`
+Your job: Ask ONE direct, actionable question that helps ${userName} think through why this person is on their mind right now.
 
-  const userPrompt = `Start a conversation about:
-Person: ${messageContext.person_name} (${messageContext.relationship_type})
-${messageContext.role ? `Role: ${messageContext.role}` : ''}
-${messageContext.context ? `Why added: ${messageContext.context}` : ''}
-${messageContext.current_situation ? `Current situation: ${messageContext.current_situation}` : ''}
+Be conversational but direct. 1-2 sentences maximum. No preamble or pleasantries.
 
-Write Mano's opening message to the manager.`
+Good examples:
+- "What brings ${messageContext.person_name} to mind right now?"
+- "What's the most important thing happening with ${messageContext.person_name} at the moment?"
+- "What do you most need to figure out about working with ${messageContext.person_name}?"
+
+Bad examples (too generic, too consultant-y):
+- "I wanted to check in about ${messageContext.person_name}..."
+- "How have you been working together?"
+- "Let me know if you need anything..."`
+
+  const userPrompt = `${userName} just added ${messageContext.person_name} (${messageContext.relationship_type}${messageContext.role ? `, ${messageContext.role}` : ''}).
+${relationshipDuration ? `They've been working together for ${relationshipDuration}.` : ''}
+${messageContext.context ? `Context: ${messageContext.context}` : ''}
+
+Generate a direct opening question that helps ${userName} engage with why ${messageContext.person_name} is relevant right now.`
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-3-haiku-20240307',
       max_tokens: 200,
-      temperature: 0.7,
+      temperature: 0.3,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }]
     })
