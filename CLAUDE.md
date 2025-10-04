@@ -2,6 +2,41 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## 🚨 CRITICAL: Git Workflow Rules
+
+**NEVER commit or push directly to main!** Always use feature branches and pull requests.
+
+**MANDATORY Workflow:**
+1. **Create a feature branch** for ALL code changes
+2. **Commit to the feature branch**
+3. **Push the feature branch** to origin
+4. **Create a Pull Request** for review
+5. **Only merge via PR** after approval
+
+**Required Commands:**
+```bash
+# 1. Create and checkout feature branch
+git checkout -b feature/description-of-change
+
+# 2. Make changes and commit
+git add <files>
+git commit -m "Description"
+
+# 3. Push feature branch (NOT main)
+git push origin feature/description-of-change
+
+# 4. Create PR
+gh pr create --title "Title" --body "Description"
+```
+
+**FORBIDDEN Commands:**
+```bash
+git push origin main          # NEVER push directly to main
+git commit && git push        # NEVER push without creating a branch first
+```
+
+**Exception:** Only push to main if explicitly instructed by the user with confirmation.
+
 ## Project Overview
 
 **Mano** is an AI-powered companion application for people managers. This repository contains both:
