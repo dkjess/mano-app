@@ -26,12 +26,20 @@ serve(async (req) => {
   try {
     // Parse request body
     const body = await req.json()
-    const { preferred_name, call_name, job_role, company } = body
+    const {
+      call_name,
+      job_role,
+      experience_level,
+      communication_style,
+      tone_preference,
+      onboarding_step
+    } = body
 
-    if (!preferred_name || !call_name || !job_role) {
+    // Validate required fields based on onboarding step
+    if (!call_name) {
       return new Response(
         JSON.stringify({
-          error: 'preferred_name, call_name, and job_role are required'
+          error: 'call_name is required'
         }),
         {
           status: 400,
@@ -74,19 +82,45 @@ serve(async (req) => {
       )
     }
 
-    // Upsert user profile with foundation data (insert if doesn't exist, update if exists)
+    // Check if all required fields are present to mark onboarding complete
+    // Note: communication_style is optional (removed from onboarding flow)
+    const isComplete = !!(
+      call_name &&
+      job_role &&
+      experience_level &&
+      tone_preference
+    )
+
+    // Build update object with only provided fields
+    const updateData: any = {
+      user_id: user.id,
+      updated_at: new Date().toISOString()
+    }
+
+    if (call_name) updateData.call_name = call_name
+    if (job_role) updateData.job_role = job_role
+    if (experience_level) updateData.experience_level = experience_level
+    if (tone_preference) updateData.tone_preference = tone_preference
+    // communication_style is optional - only set if provided and not empty
+    if (communication_style && communication_style.trim() !== '') {
+      updateData.communication_style = communication_style
+    }
+
+    // Update onboarding step if provided
+    if (typeof onboarding_step === 'number') {
+      updateData.onboarding_step = onboarding_step
+    }
+
+    // Mark complete only when all required fields are filled
+    if (isComplete) {
+      updateData.onboarding_completed = true
+      updateData.onboarding_step = 3 // All 3 steps done (Name, Role, Tone)
+    }
+
+    // Upsert user profile with onboarding data
     const { data: updatedProfile, error: updateError } = await supabase
       .from('user_profiles')
-      .upsert({
-        user_id: user.id,
-        preferred_name,
-        call_name,
-        job_role,
-        company: company || null, // Company is optional
-        onboarding_step: 1, // Foundation profile completed (step 1)
-        onboarding_completed: true, // Mark onboarding as complete
-        updated_at: new Date().toISOString()
-      }, {
+      .upsert(updateData, {
         onConflict: 'user_id'
       })
       .select()
@@ -97,33 +131,103 @@ serve(async (req) => {
       throw updateError
     }
 
-    // Also upsert the is_self person with the name information
-    // Use call_name for the person record as that's what Mano should call them
-    const { error: personUpdateError } = await supabase
-      .from('people')
-      .upsert({
-        user_id: user.id,
-        name: call_name, // Use their preferred call name, not full name
-        role: job_role,
-        team: company || null,
-        relationship_type: 'self',
-        is_self: true,
-        updated_at: new Date().toISOString()
-      }, {
-        onConflict: 'user_id,is_self',
-        ignoreDuplicates: false
-      })
+    // Update the is_self person with the user's information
+    if (call_name || job_role) {
+      // First check if is_self person exists
+      const { data: existingPerson } = await supabase
+        .from('people')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('is_self', true)
+        .single()
 
-    if (personUpdateError) {
-      console.warn('Warning: Could not upsert is_self person:', personUpdateError)
-      // Don't fail the request for this - the user profile update is more important
+      if (existingPerson) {
+        // Update existing is_self person
+        const personUpdate: any = {
+          updated_at: new Date().toISOString()
+        }
+        if (call_name) personUpdate.name = call_name
+        if (job_role) personUpdate.role = job_role
+
+        const { error: personUpdateError } = await supabase
+          .from('people')
+          .update(personUpdate)
+          .eq('id', existingPerson.id)
+
+        if (personUpdateError) {
+          console.warn('Warning: Could not update is_self person:', personUpdateError)
+        }
+
+        // Generate initial welcome message if onboarding is complete
+        if (isComplete) {
+          try {
+            // Small delay to ensure database transaction has committed
+            await new Promise(resolve => setTimeout(resolve, 500))
+
+            const supabaseURL = Deno.env.get('SUPABASE_URL') ?? ''
+            const personResponse = await fetch(`${supabaseURL}/functions/v1/person/${existingPerson.id}/initial-message`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader, // Use user's auth token
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                generate_conversation_starters: true
+              })
+            })
+            if (!personResponse.ok) {
+              console.warn('Warning: Could not generate initial message for is_self person')
+            }
+          } catch (error) {
+            console.warn('Warning: Failed to call person initial-message endpoint:', error)
+          }
+        }
+      } else {
+        // Create new is_self person
+        const { data: newPerson, error: personInsertError } = await supabase
+          .from('people')
+          .insert({
+            user_id: user.id,
+            name: call_name || 'User',
+            role: job_role || null,
+            relationship_type: 'self',
+            is_self: true
+          })
+          .select()
+          .single()
+
+        if (personInsertError) {
+          console.warn('Warning: Could not create is_self person:', personInsertError)
+        } else if (newPerson) {
+          // Generate initial welcome message for is_self person
+          try {
+            const supabaseURL = Deno.env.get('SUPABASE_URL') ?? ''
+            const personResponse = await fetch(`${supabaseURL}/functions/v1/person/${newPerson.id}/initial-message`, {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader, // Use user's auth token
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                generate_conversation_starters: true
+              })
+            })
+            if (!personResponse.ok) {
+              console.warn('Warning: Could not generate initial message for is_self person')
+            }
+          } catch (error) {
+            console.warn('Warning: Failed to call person initial-message endpoint:', error)
+          }
+        }
+      }
     }
 
     return new Response(
       JSON.stringify({
         success: true,
         profile: updatedProfile,
-        message: 'Foundation profile completed successfully'
+        message: isComplete ? 'Onboarding completed successfully' : 'Onboarding progress saved',
+        onboarding_completed: isComplete
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

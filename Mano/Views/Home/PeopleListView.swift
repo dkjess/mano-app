@@ -18,6 +18,7 @@ struct PeopleListView: View {
     @State private var personToDelete: Person? = nil
     @State private var showingDeleteConfirmation = false
     @State private var showEnvironmentPicker = false
+    @State private var showingDeleteAccountConfirmation = false
     @ObservedObject private var supabase = SupabaseManager.shared
     @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
     
@@ -142,6 +143,10 @@ struct PeopleListView: View {
 
                                 Divider()
 
+                                Button("Delete Account", role: .destructive) {
+                                    showingDeleteAccountConfirmation = true
+                                }
+
                                 Button("Sign Out") {
                                     Task {
                                         try? await supabase.signOut()
@@ -213,6 +218,16 @@ struct PeopleListView: View {
             } message: { person in
                 Text("Are you sure you want to delete \(person.name)? This will permanently remove all conversations and data related to this person. This action cannot be undone.")
             }
+            .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Account", role: .destructive) {
+                    Task {
+                        await deleteAccount()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to permanently delete your account? This will remove all your data, conversations, and people. This action cannot be undone.")
+            }
         }
     }
     
@@ -233,7 +248,7 @@ struct PeopleListView: View {
         do {
             try await supabase.people.deletePerson(person.id)
             print("✅ PeopleListView: Delete call succeeded, updating UI")
-            
+
             // Remove from local array
             await MainActor.run {
                 print("🔄 PeopleListView: Removing person from local array (current count: \(people.count))")
@@ -245,6 +260,19 @@ struct PeopleListView: View {
             }
         } catch {
             print("❌ PeopleListView: Failed to delete person: \(error)")
+            print("❌ PeopleListView: Error details: \(error.localizedDescription)")
+            // TODO: Show error alert to user
+        }
+    }
+
+    private func deleteAccount() async {
+        print("🗑️ PeopleListView: Starting account deletion")
+        do {
+            try await supabase.deleteAccount()
+            print("✅ PeopleListView: Account deletion succeeded")
+            // User will be automatically signed out via auth state change
+        } catch {
+            print("❌ PeopleListView: Failed to delete account: \(error)")
             print("❌ PeopleListView: Error details: \(error.localizedDescription)")
             // TODO: Show error alert to user
         }

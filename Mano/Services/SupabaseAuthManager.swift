@@ -145,4 +145,34 @@ class SupabaseAuthManager: ObservableObject {
             throw error
         }
     }
+
+    func deleteAccount() async throws {
+        isLoading = true
+        errorMessage = ""
+
+        defer {
+            isLoading = false
+        }
+
+        do {
+            // Verify user is authenticated
+            guard user != nil else {
+                throw NSError(domain: "AuthError", code: 0, userInfo: [NSLocalizedDescriptionKey: "No user logged in"])
+            }
+
+            // Call Edge Function to delete account (has service role permissions)
+            try await client.functions.invoke(
+                "delete-account",
+                options: .init(
+                    method: .delete
+                )
+            )
+
+            // Sign out after successful deletion
+            try await signOut()
+        } catch {
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
 }

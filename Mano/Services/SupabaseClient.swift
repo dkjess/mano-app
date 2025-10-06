@@ -108,13 +108,17 @@ class SupabaseManager: ObservableObject {
     func signOut() async throws {
         try await auth.signOut()
     }
-    
+
+    func deleteAccount() async throws {
+        try await auth.deleteAccount()
+    }
+
     func fetchPeople() async throws -> [Person] {
         return try await people.fetchPeople()
     }
     
-    func createPerson(name: String, role: String?, relationshipType: String) async throws -> Person {
-        return try await people.createPerson(name: name, role: role, relationshipType: relationshipType)
+    func createPerson(name: String, role: String?, relationshipType: String, startedWorkingTogether: Date? = nil) async throws -> Person {
+        return try await people.createPerson(name: name, role: role, relationshipType: relationshipType, startedWorkingTogether: startedWorkingTogether)
     }
     
     func fetchMessages(for personId: UUID) async throws -> [Message] {
