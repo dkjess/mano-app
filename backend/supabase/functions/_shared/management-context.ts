@@ -556,8 +556,18 @@ export class ManagementContextBuilder {
       .slice(0, 5); // Top 5 themes
   }
 
-  private detectCurrentChallenges(messages: any[]): string[] {
-    // Look for challenge indicators in recent messages
+  private async detectCurrentChallenges(messages: any[]): Promise<string[]> {
+    // Try LLM-based challenge detection if API key available
+    if (Deno.env.get('ANTHROPIC_API_KEY')) {
+      try {
+        return await this.detectChallengesWithLLM(messages);
+      } catch (error) {
+        console.warn('LLM challenge detection failed, falling back to keyword-based:', error);
+        // Fall through to keyword-based detection
+      }
+    }
+
+    // Fallback: keyword-based challenge detection
     const challengeKeywords = {
       'Team Communication': ['miscommunication', 'unclear', 'confusion', 'alignment'],
       'Workload Management': ['overwhelmed', 'too much', 'burnout', 'capacity'],
@@ -578,14 +588,73 @@ export class ManagementContextBuilder {
     return challenges;
   }
 
-  private analyzeConversationPatterns(messages: any[]) {
+  private async detectChallengesWithLLM(messages: any[]): Promise<string[]> {
+    // Only analyze last 20 messages to save tokens
+    const recentMessages = messages.slice(-20);
+    if (recentMessages.length === 0) return [];
+
+    const messageText = recentMessages
+      .map(m => `${m.is_user ? 'Manager' : 'Mano'}: ${m.content}`)
+      .join('\n');
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': Deno.env.get('ANTHROPIC_API_KEY')!,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        messages: [{
+          role: 'user',
+          content: `Analyze these recent manager conversations and identify current management challenges.
+
+Recent messages:
+${messageText}
+
+Return ONLY a JSON array of challenge names (strings). Focus on recurring patterns and genuine concerns, not one-off mentions. Maximum 5 challenges.
+
+Example format: ["Team Communication", "Workload Management", "Performance Issues"]
+
+Common challenge categories:
+- Team Communication
+- Workload Management
+- Performance Issues
+- Process Problems
+- Stakeholder Management
+- Hiring & Retention
+- Career Development
+- Technical Debt
+- Conflict Resolution
+- Strategic Alignment
+
+Return only the JSON array, nothing else.`
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API error: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    const text = data.content[0].text.trim();
+
+    // Parse JSON response
+    try {
+      const challenges = JSON.parse(text);
+      return Array.isArray(challenges) ? challenges.slice(0, 5) : [];
+    } catch (parseError) {
+      console.warn('Failed to parse LLM challenge response:', text);
+      return [];
+    }
+  }
+
+  private async analyzeConversationPatterns(messages: any[]) {
     // Analyze which people are discussed most and cross-references
     const personMentions = new Map<string, number>();
-    const crossReferences: Array<{
-      person_a: string;
-      person_b: string;
-      context: string;
-    }> = [];
 
     // Count discussion frequency per person
     messages.forEach(msg => {
@@ -601,16 +670,72 @@ export class ManagementContextBuilder {
     const allContent = messages.map((m: any) => m.content).join(' ');
     const trendingTopics = this.extractThemesFromMessages([allContent]).slice(0, 5);
 
+    // Detect cross-person mentions
+    const crossReferences = await this.detectCrossPersonMentions(messages);
+
     return {
       most_discussed_people: mostDiscussed,
       trending_topics: trendingTopics,
-      cross_person_mentions: crossReferences // Could be enhanced to detect name mentions
+      cross_person_mentions: crossReferences
     };
+  }
+
+  private async detectCrossPersonMentions(messages: any[]): Promise<Array<{
+    person_a: string;
+    person_b: string;
+    context: string;
+  }>> {
+    const mentions: Array<{
+      person_a: string;
+      person_b: string;
+      context: string;
+      timestamp: string;
+    }> = [];
+
+    // Get all people for name matching
+    const { data: people } = await this.supabase
+      .from('people')
+      .select('id, name')
+      .eq('user_id', this.userId);
+
+    if (!people || people.length === 0) return [];
+
+    // For each message, check if other people are mentioned
+    for (const message of messages) {
+      const currentPersonId = message.person_id;
+      const currentPerson = people.find(p => p.id === currentPersonId);
+      if (!currentPerson) continue;
+
+      const messageContent = message.content.toLowerCase();
+
+      // Check if any other person's name is mentioned in this message
+      for (const person of people) {
+        if (person.id === currentPersonId) continue; // Skip self-mentions
+
+        const fullNameMentioned = messageContent.includes(person.name.toLowerCase());
+        const firstNameMentioned = messageContent.includes(person.name.split(' ')[0].toLowerCase());
+
+        if (fullNameMentioned || firstNameMentioned) {
+          mentions.push({
+            person_a: currentPerson.name,
+            person_b: person.name,
+            context: message.content.substring(0, 150) + (message.content.length > 150 ? '...' : ''),
+            timestamp: message.created_at
+          });
+        }
+      }
+    }
+
+    // Return most recent 10 cross-person mentions, sorted by timestamp
+    return mentions
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 10)
+      .map(({ person_a, person_b, context }) => ({ person_a, person_b, context }));
   }
 }
 
 export function formatContextForPrompt(context: ManagementContext, currentPersonId: string, currentQuery?: string): string {
-  const { people, team_size, recent_themes, current_challenges, semantic_context } = context;
+  const { people, team_size, recent_themes, current_challenges, semantic_context, conversation_patterns } = context;
 
   // Handle case where no team members exist yet
   if (people.length === 0) {
@@ -661,12 +786,23 @@ ${semantic_context.cross_person_insights.slice(0, 2).map(insight =>
     }
   }
 
+  // Add cross-person mentions section
+  let crossPersonSection = '';
+  if (conversation_patterns?.cross_person_mentions && conversation_patterns.cross_person_mentions.length > 0) {
+    crossPersonSection = `
+
+TEAM CONNECTIONS (Recent cross-person mentions):
+${conversation_patterns.cross_person_mentions.slice(0, 5).map(mention =>
+  `- ${mention.person_a} mentioned ${mention.person_b}: "${mention.context}"`
+).join('\n')}`;
+  }
+
   // Context awareness note
-  const contextNote = currentPersonId === 'general' 
+  const contextNote = currentPersonId === 'general'
     ? '\nCONVERSATION TYPE: General management discussion - use full team context for strategic advice'
     : `\nCONVERSATION TYPE: Focused discussion about ${people.find((p: any) => p.id === currentPersonId)?.name || 'team member'} - but you have full awareness of your entire team context and can reference any team member`;
 
-  return `${teamOverview}${themesSection}${challengesSection}${semanticSection}${contextNote}
+  return `${teamOverview}${themesSection}${challengesSection}${crossPersonSection}${semanticSection}${contextNote}
 
 When responding, you can reference insights from other team members and conversations when relevant, especially the semantic context provided above. You have full visibility into your entire team and should answer questions about any team member or role. Use this comprehensive awareness to provide deeply contextual and interconnected management advice.`;
 } 

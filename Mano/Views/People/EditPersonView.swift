@@ -31,26 +31,29 @@ struct EditPersonView: View {
     @ObservedObject private var supabase = SupabaseManager.shared
     
     enum RelationshipType: String, CaseIterable {
-        case manager = "manager"
         case directReport = "direct_report"
         case peer = "peer"
         case stakeholder = "stakeholder"
-        
+        case manager = "manager"
+        case other = "other"
+
         var displayName: String {
             switch self {
             case .manager: return "Manager"
             case .directReport: return "Direct Report"
             case .peer: return "Peer"
             case .stakeholder: return "Stakeholder"
+            case .other: return "Other"
             }
         }
-        
+
         var icon: String {
             switch self {
             case .manager: return "tshirt"
             case .directReport: return "person"
             case .peer: return "person.2"
             case .stakeholder: return "target"
+            case .other: return "person.crop.circle"
             }
         }
     }
@@ -174,7 +177,8 @@ struct EditPersonView: View {
                 challenges: challenges.isEmpty ? nil : challenges.trimmingCharacters(in: .whitespacesAndNewlines),
                 lastProfilePrompt: person.lastProfilePrompt,
                 profileCompletionScore: person.profileCompletionScore,
-                isSelf: person.isSelf
+                isSelf: person.isSelf,
+                startedWorkingTogether: person.startedWorkingTogether
             )
             
             let resultPerson = try await supabase.people.updatePerson(updatedPerson)
@@ -212,7 +216,8 @@ struct EditPersonView: View {
         challenges: "Time management",
         lastProfilePrompt: nil,
         profileCompletionScore: 75,
-        isSelf: false
+        isSelf: false,
+        startedWorkingTogether: nil
     )
     
     EditPersonView(

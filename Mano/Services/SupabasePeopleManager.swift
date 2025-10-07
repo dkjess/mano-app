@@ -33,7 +33,7 @@ class SupabasePeopleManager {
         
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabasePeopleManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw PeopleManagementError.notAuthenticated
         }
         
         print("🔍 Current user: \(userId.uuidString)")
@@ -54,22 +54,28 @@ class SupabasePeopleManager {
         return people
     }
     
-    func createPerson(name: String, role: String?, relationshipType: String) async throws -> Person {
+    func createPerson(name: String, role: String?, relationshipType: String, startedWorkingTogether: Date? = nil) async throws -> Person {
         print("🆕 Creating person via new /person endpoint: \(name)")
-        
+
         // Prepare request data for the new /person endpoint
         struct PersonCreationRequest: Codable {
             let name: String
             let role: String?
             let relationship_type: String
             let generate_initial_message: Bool
+            let started_working_together: String?
         }
-        
+
+        // Format date as ISO string if provided
+        let dateFormatter = ISO8601DateFormatter()
+        let dateString = startedWorkingTogether.map { dateFormatter.string(from: $0) }
+
         let requestData = PersonCreationRequest(
             name: name,
             role: role,
             relationship_type: relationshipType,
-            generate_initial_message: true
+            generate_initial_message: true,
+            started_working_together: dateString
         )
         
         // Use manual URLRequest approach like chat function (SDK seems to have issues with POST)
@@ -89,7 +95,7 @@ class SupabasePeopleManager {
             let (data, response) = try await URLSession.shared.data(for: request)
             
             guard let httpResponse = response as? HTTPURLResponse else {
-                throw NSError(domain: "SupabasePeopleManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+                throw PeopleManagementError.invalidResponse
             }
             
             print("🆕 Person create response status: \(httpResponse.statusCode)")
@@ -97,7 +103,7 @@ class SupabasePeopleManager {
             if httpResponse.statusCode != 200 {
                 let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
                 print("❌ Person create API error: \(errorMessage)")
-                throw NSError(domain: "SupabasePeopleManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+                throw PeopleManagementError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
             }
             
             // Log the raw response for debugging
@@ -109,6 +115,7 @@ class SupabasePeopleManager {
             struct PersonCreationResponse: Codable {
                 let person: Person
                 let hasInitialMessage: Bool?
+                let initialMessage: Message? // Backend returns this but we don't need it
             }
             
             let decoder = JSONDecoder()
@@ -120,7 +127,7 @@ class SupabasePeopleManager {
             
         } catch {
             print("❌ Person creation failed: \(error)")
-            throw NSError(domain: "SupabasePeopleManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to create person: \(error.localizedDescription)"])
+            throw PeopleManagementError.personCreationFailed(error.localizedDescription)
         }
     }
     
@@ -192,12 +199,12 @@ class SupabasePeopleManager {
                 return updateResponse.person
             } else {
                 print("❌ Response is not Data type, cannot parse person")
-                throw NSError(domain: "SupabasePeopleManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Invalid response format"])
+                throw PeopleManagementError.invalidResponse
             }
             
         } catch {
             print("❌ Person update failed: \(error)")
-            throw NSError(domain: "SupabasePeopleManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to update person: \(error.localizedDescription)"])
+            throw PeopleManagementError.personUpdateFailed(error.localizedDescription)
         }
     }
     
@@ -241,7 +248,7 @@ class SupabasePeopleManager {
                     print("✅ Person deleted successfully: \(deleteResponse.message ?? "")")
                 } else {
                     print("❌ Delete response indicates failure")
-                    throw NSError(domain: "SupabasePeopleManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Delete operation failed"])
+                    throw PeopleManagementError.personDeletionFailed("Delete operation failed")
                 }
             } else {
                 print("🗑️ Response is not Data type, assuming success")
@@ -251,7 +258,7 @@ class SupabasePeopleManager {
         } catch {
             print("❌ Person deletion failed with error: \(error)")
             print("❌ Error details: \(error.localizedDescription)")
-            throw NSError(domain: "SupabasePeopleManager", code: 500, userInfo: [NSLocalizedDescriptionKey: "Failed to delete person: \(error.localizedDescription)"])
+            throw PeopleManagementError.personDeletionFailed(error.localizedDescription)
         }
     }
 }
