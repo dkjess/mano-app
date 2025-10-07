@@ -499,6 +499,107 @@ Previous conversation:
 
 If the user provides profile information, acknowledge it and ask the next logical question. If they want to skip or finish, respect that choice. Keep the tone friendly and conversational.`;
 
+// ============================================================================
+// PROMPT PERSONALIZATION HELPERS (Phase 1)
+// ============================================================================
+
+function getExperienceLevelGuidance(level: string | null): string {
+  switch(level) {
+    case 'new':
+      return '(New manager - provide foundational context, explain management concepts when relevant, be extra supportive)'
+    case 'experienced':
+      return '(Experienced manager - assume management fundamentals, focus on nuanced situations and deeper insights)'
+    case 'veteran':
+      return '(Veteran manager - skip basics, engage with complex organizational dynamics and strategic thinking)'
+    default:
+      return '(Management experience level unknown - adapt to their questions)'
+  }
+}
+
+function getToneGuidance(tone: string | null): string {
+  switch(tone) {
+    case 'direct':
+      return '(User prefers DIRECT tone - be concise and straightforward, prioritize actionable advice, minimize pleasantries)'
+    case 'warm':
+      return '(User prefers WARM tone - be encouraging and supportive, acknowledge emotions and challenges, celebrate wins)'
+    case 'conversational':
+      return '(User prefers CONVERSATIONAL tone - be casual and friendly like a peer advisor, use natural language)'
+    case 'analytical':
+      return '(User prefers ANALYTICAL tone - be structured and data-driven, use frameworks and logical reasoning)'
+    default:
+      return '(Tone preference unknown - use balanced conversational style)'
+  }
+}
+
+function detectProblemType(userMessage: string): string {
+  const tactical = /\b(meeting|deadline|task|project plan|schedule|agenda|1:1|one.on.one)\b/i.test(userMessage)
+  const interpersonal = /\b(conflict|relationship|trust|communication|feedback|difficult conversation|tension|upset|frustrated|angry)\b/i.test(userMessage)
+  const strategic = /\b(vision|strategy|direction|roadmap|long.?term|organization|culture|transformation|goals)\b/i.test(userMessage)
+  const selfReflection = /\b(i feel|my own|myself|my leadership|my approach|i'm worried|i'm concerned|should i)\b/i.test(userMessage)
+  const performance = /\b(performance|underperforming|pip|performance review|not meeting expectations|struggling)\b/i.test(userMessage)
+
+  if (selfReflection) {
+    return `\n\nSITUATION TYPE: Self-reflection - Use coaching questions to deepen self-awareness. Help them see patterns in their behavior. Celebrate growth areas while acknowledging challenges. Guide them to their own insights.`
+  } else if (interpersonal) {
+    return `\n\nSITUATION TYPE: Interpersonal challenge - Explore multiple perspectives. Ask about the other person's motivations and context. Consider what might be driving their behavior. Guide toward empathetic problem-solving.`
+  } else if (performance) {
+    return `\n\nSITUATION TYPE: Performance management - Balance support and accountability. Help them identify root causes. Discuss both documentation needs and coaching approaches. Be direct but compassionate.`
+  } else if (strategic) {
+    return `\n\nSITUATION TYPE: Strategic thinking - Ask about goals, stakeholders, and tradeoffs. Connect to team context and organizational impact. Encourage systems thinking and long-term planning.`
+  } else if (tactical) {
+    return `\n\nSITUATION TYPE: Tactical execution - Provide concrete frameworks and next steps. Focus on action over exploration. Be practical and specific.`
+  }
+
+  return '' // No special situation detected
+}
+
+function determineResponseLengthGuidance(
+  userMessage: string,
+  experienceLevel: string | null,
+  conversationHistory: any[]
+): string {
+  const isComplexQuery = userMessage.length > 200 || /\b(how|why|explain|tell me about|help me understand)\b/i.test(userMessage)
+  const isNewManager = experienceLevel === 'new'
+  const isQuickQuestion = userMessage.length < 50 && /\b(should i|can i|what about|quick question)\b/i.test(userMessage)
+
+  if (isQuickQuestion) {
+    return '1-2 sentences, direct answer'
+  } else if (isNewManager && isComplexQuery) {
+    return '3-5 sentences with brief context/explanation to support learning'
+  } else if (isComplexQuery) {
+    return '3-4 sentences with key context'
+  } else {
+    return '2-3 sentences, concise and actionable'
+  }
+}
+
+function determineCoachingApproach(
+  userMessage: string,
+  conversationHistory: any[],
+  experienceLevel: string | null
+): string {
+  // Detect if user is asking for direct advice vs exploring a problem
+  const isSeekingAdvice = /\b(how do i|what should i|give me|tell me|help me|recommend|suggest)\b/i.test(userMessage)
+  const isExploring = /\b(thinking about|wondering|not sure|considering|debating|torn between)\b/i.test(userMessage)
+  const isUrgent = /\b(urgent|asap|today|right now|immediately|emergency)\b/i.test(userMessage)
+  const messageCount = conversationHistory.length
+
+  if (isUrgent) {
+    return `\n\nCOACHING APPROACH: Urgent situation - Provide direct, actionable guidance immediately. You can explore nuances after addressing the immediate need.`
+  } else if (messageCount < 3 && !isSeekingAdvice && isExploring) {
+    // Early in conversation and exploring - use Socratic method
+    return `\n\nCOACHING APPROACH: Use Socratic questioning to help the manager articulate their thinking. Ask 1-2 clarifying questions before offering advice. Help them discover insights through reflection. What are they already considering? What assumptions might they examine?`
+  } else if (isSeekingAdvice) {
+    // Direct advice requested
+    return `\n\nCOACHING APPROACH: The manager is seeking direct guidance. Provide actionable advice while still encouraging their critical thinking with one brief follow-up question.`
+  } else if (isExploring) {
+    // Problem exploration mode
+    return `\n\nCOACHING APPROACH: The manager is thinking through a problem. Guide discovery with questions that surface assumptions, stakeholder perspectives, and potential approaches. Ask what they've already considered.`
+  }
+
+  return `\n\nCOACHING APPROACH: Balance inquiry and advice. Use questions to deepen understanding when helpful, then provide targeted recommendations.`
+}
+
 // Database functions - simplified versions for edge function
 async function getMessages(personId: string, supabase: any): Promise<Message[]> {
   const { data, error } = await supabase
@@ -678,10 +779,10 @@ async function handleStreamingChat({
     // Performance checkpoint: Start context building
     performanceTracker?.checkpoint('context_start');
 
-    // Get user profile
+    // Get user profile (including coaching preferences)
     const { data: userProfile } = await supabase
       .from('user_profiles')
-      .select('call_name, job_role, company')
+      .select('call_name, job_role, company, experience_level, tone_preference')
       .eq('user_id', user.id)
       .single()
 
@@ -912,7 +1013,7 @@ async function handleStreamingChat({
     let systemPrompt
     if (isTopicConversation) {
       // Topic conversations should use the general prompt with user context
-      systemPrompt = buildGeneralSystemPrompt(managementContext, conversationHistory, userProfile)
+      systemPrompt = buildGeneralSystemPrompt(managementContext, conversationHistory, userProfile, userMessage)
     } else {
       // Person conversations use person-specific prompt with profile context
       systemPrompt = buildSystemPrompt(
@@ -923,7 +1024,8 @@ async function handleStreamingChat({
         managementContext,
         userProfile,
         profileContext,
-        !!person.is_self
+        !!person.is_self,
+        userMessage
       )
     }
 
@@ -1098,13 +1200,14 @@ function buildSystemPrompt(
   managementContext: any,
   userProfile: any,
   profileContext?: string,
-  isSelf?: boolean
+  isSelf?: boolean,
+  userMessage?: string
 ): string {
   // Use the appropriate system prompt based on context
   if (personName === 'General') {
-    return buildGeneralSystemPrompt(managementContext, conversationHistory, userProfile)
+    return buildGeneralSystemPrompt(managementContext, conversationHistory, userProfile, userMessage)
   } else {
-    return buildPersonSystemPrompt(personName, personRole, relationshipType, conversationHistory, managementContext, userProfile, profileContext, isSelf)
+    return buildPersonSystemPrompt(personName, personRole, relationshipType, conversationHistory, managementContext, userProfile, profileContext, isSelf, userMessage)
   }
 }
 
@@ -1116,21 +1219,47 @@ function buildPersonSystemPrompt(
   managementContext: any,
   userProfile: any,
   profileContext?: string,
-  isSelf?: boolean
+  isSelf?: boolean,
+  userMessage?: string
 ): string {
   const contextText = managementContext ? formatContextForPrompt(managementContext, 'general') : ''
   const historyText = conversationHistory
     .slice(-10)
     .map((msg: any) => `${msg.is_user ? 'Manager' : 'Mano'}: ${msg.content}`)
     .join('\n')
-  
-  const userContext = userProfile?.call_name ? 
-    `You are speaking with ${userProfile.call_name}${userProfile.job_role ? `, ${userProfile.job_role}` : ''}${userProfile.company ? ` at ${userProfile.company}` : ''}.` : 
+
+  // Enhanced user context with coaching preferences
+  let userContext = userProfile?.call_name ?
+    `You are speaking with ${userProfile.call_name}${userProfile.job_role ? `, ${userProfile.job_role}` : ''}${userProfile.company ? ` at ${userProfile.company}` : ''}.` :
     'You are speaking with a manager.'
+
+  // Add experience level and tone guidance
+  if (userProfile?.experience_level || userProfile?.tone_preference) {
+    userContext += '\n\nCOACHING CONTEXT:'
+    if (userProfile.experience_level) {
+      userContext += `\n- Experience Level: ${getExperienceLevelGuidance(userProfile.experience_level)}`
+    }
+    if (userProfile.tone_preference) {
+      userContext += `\n- Tone Preference: ${getToneGuidance(userProfile.tone_preference)}`
+    }
+  }
+
+  // Add situational guidance if we have the current message
+  if (userMessage) {
+    const problemType = detectProblemType(userMessage)
+    const coachingApproach = determineCoachingApproach(userMessage, conversationHistory, userProfile?.experience_level)
+    userContext += problemType + coachingApproach
+  }
 
   // Build enhanced prompt with profile context
   // Use self-reflection prompt for self persons
   let enhancedPrompt = isSelf ? SELF_SYSTEM_PROMPT : SYSTEM_PROMPT;
+
+  // Adapt response length based on query complexity and user experience
+  if (userMessage) {
+    const lengthGuidance = determineResponseLengthGuidance(userMessage, userProfile?.experience_level, conversationHistory)
+    enhancedPrompt = enhancedPrompt.replace('2-4 sentences maximum', lengthGuidance)
+  }
   
   // Add profile context if available
   if (profileContext && profileContext.trim()) {
@@ -1159,43 +1288,69 @@ This profile provides background context about ${personName} to help you give mo
 function buildGeneralSystemPrompt(
   managementContext: any,
   conversationHistory: any[],
-  userProfile: any
+  userProfile: any,
+  userMessage?: string
 ): string {
   console.log('🔍 PROMPT DEBUG: Building general system prompt with context:', {
     managementContext_exists: !!managementContext,
     people_count: managementContext?.people?.length || 0,
     contextText_preview: managementContext ? 'will format...' : 'NO CONTEXT'
   })
-  
+
   const contextText = managementContext ? formatContextForPrompt(managementContext, 'general') : 'NO TEAM CONTEXT AVAILABLE'
-  
+
   console.log('🔍 PROMPT DEBUG: Formatted context text preview:', {
     contextText_length: contextText.length,
     contextText_preview: contextText.substring(0, 200) + '...',
     includes_team_members: contextText.includes('TEAM MEMBERS'),
     includes_people_names: managementContext?.people?.some((p: any) => contextText.includes(p.name)) || false
   })
-  
+
   const historyText = conversationHistory
     .slice(-10)
     .map((msg: any) => `${msg.is_user ? 'Manager' : 'Mano'}: ${msg.content}`)
     .join('\n')
-  
-  const userContext = userProfile?.call_name ? 
-    `You are speaking with ${userProfile.call_name}${userProfile.job_role ? `, ${userProfile.job_role}` : ''}${userProfile.company ? ` at ${userProfile.company}` : ''}.` : 
+
+  // Enhanced user context with coaching preferences
+  let userContext = userProfile?.call_name ?
+    `You are speaking with ${userProfile.call_name}${userProfile.job_role ? `, ${userProfile.job_role}` : ''}${userProfile.company ? ` at ${userProfile.company}` : ''}.` :
     'You are speaking with a manager.'
 
-  const finalPrompt = GENERAL_SYSTEM_PROMPT
+  // Add experience level and tone guidance
+  if (userProfile?.experience_level || userProfile?.tone_preference) {
+    userContext += '\n\nCOACHING CONTEXT:'
+    if (userProfile.experience_level) {
+      userContext += `\n- Experience Level: ${getExperienceLevelGuidance(userProfile.experience_level)}`
+    }
+    if (userProfile.tone_preference) {
+      userContext += `\n- Tone Preference: ${getToneGuidance(userProfile.tone_preference)}`
+    }
+  }
+
+  // Add situational guidance if we have the current message
+  if (userMessage) {
+    const problemType = detectProblemType(userMessage)
+    const coachingApproach = determineCoachingApproach(userMessage, conversationHistory, userProfile?.experience_level)
+    userContext += problemType + coachingApproach
+  }
+
+  let finalPrompt = GENERAL_SYSTEM_PROMPT
     .replace('{management_context}', contextText)
     .replace('{conversation_history}', historyText)
     .replace('{user_context}', userContext)
-    
+
+  // Adapt response length based on query complexity
+  if (userMessage) {
+    const lengthGuidance = determineResponseLengthGuidance(userMessage, userProfile?.experience_level, conversationHistory)
+    finalPrompt = finalPrompt.replace('2-4 sentences maximum', lengthGuidance)
+  }
+
   console.log('🔍 PROMPT DEBUG: Final prompt preview:', {
     prompt_length: finalPrompt.length,
     includes_context: finalPrompt.includes('TEAM MEMBERS'),
     still_has_placeholder: finalPrompt.includes('{management_context}')
   })
-  
+
   return finalPrompt
 }
 

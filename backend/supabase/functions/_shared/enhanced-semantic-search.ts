@@ -86,8 +86,8 @@ export class EnhancedSemanticSearch {
     if (context.person_id && context.person_id !== 'general') {
       // Person-specific search
       results = await this.vectorService.searchSimilarConversations(
-        expandedQuery,
         this.userId,
+        expandedQuery,
         {
           personFilter: context.person_id,
           limit: 20,
@@ -97,9 +97,9 @@ export class EnhancedSemanticSearch {
     } else {
       // Cross-person search
       results = await this.vectorService.searchSimilarConversations(
-        expandedQuery,
         this.userId,
-        { 
+        expandedQuery,
+        {
           limit: 30,
           threshold: 0.75
         }
