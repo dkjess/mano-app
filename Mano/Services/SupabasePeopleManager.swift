@@ -89,7 +89,8 @@ class SupabasePeopleManager {
             request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
             request.setValue(BackendEnvironmentManager.shared.currentEnvironment.supabaseAnonKey, forHTTPHeaderField: "apikey")
             request.httpBody = jsonData
-            
+            request.timeoutInterval = 60 // Increase timeout for AI message generation
+
             print("🆕 Sending manual request to: \(BackendEnvironmentManager.shared.currentEnvironment.supabaseURL)/functions/v1/person")
             
             let (data, response) = try await URLSession.shared.data(for: request)
@@ -127,6 +128,21 @@ class SupabasePeopleManager {
             
         } catch {
             print("❌ Person creation failed: \(error)")
+
+            // Provide more specific error messages
+            if let urlError = error as? URLError {
+                switch urlError.code {
+                case .timedOut:
+                    throw PeopleManagementError.personCreationFailed("Request timed out. Please check your internet connection and try again.")
+                case .notConnectedToInternet, .networkConnectionLost:
+                    throw PeopleManagementError.personCreationFailed("No internet connection. Please check your network and try again.")
+                case .cannotFindHost, .cannotConnectToHost:
+                    throw PeopleManagementError.personCreationFailed("Cannot connect to server. Please try again later.")
+                default:
+                    throw PeopleManagementError.personCreationFailed("Network error: \(urlError.localizedDescription)")
+                }
+            }
+
             throw PeopleManagementError.personCreationFailed(error.localizedDescription)
         }
     }
