@@ -137,11 +137,70 @@ The iOS app is designed as a thin client that connects to the existing Supabase 
 
 ## Swift Development Standards
 
-**MANDATORY**: This project requires iOS 26.0+ and uses the latest Swift/SwiftUI APIs. 
+**MANDATORY**: This project requires iOS 26.0+ and uses the latest Swift/SwiftUI APIs.
 - **Never use deprecated APIs** - Always check for deprecation warnings
 - **Always use the most modern syntax** available in Swift and SwiftUI
 - **Follow Apple's latest design guidelines** and API patterns
 - **Test on latest iOS versions** - The app targets cutting-edge iOS features
+
+### Platform-Specific Code Requirements
+
+**CRITICAL**: This is a multi-platform app (iOS, macOS, visionOS). Always use platform checks for platform-specific APIs.
+
+#### Colors
+**WRONG:**
+```swift
+.background(Color(.systemGray6))  // ❌ iOS-only, crashes on macOS
+```
+
+**CORRECT:**
+```swift
+#if os(iOS)
+.background(Color(.systemGray6))
+#else
+.background(Color(NSColor.controlBackgroundColor))
+#endif
+```
+
+**Common Platform-Specific Colors:**
+- `UIColor.systemGray6` → iOS only
+- `UIColor.systemBackground` → iOS only
+- `NSColor.controlBackgroundColor` → macOS only
+- `NSColor.windowBackgroundColor` → macOS only
+
+**Safe Cross-Platform Colors:**
+- `Color.gray`, `Color.blue`, `Color.red`, etc. (built-in SwiftUI colors)
+- `Color.primary`, `Color.secondary` (semantic colors)
+- `.background`, `.regularMaterial` (SwiftUI materials)
+
+#### Device/Platform Checks
+```swift
+// Check device type (iOS only)
+#if os(iOS)
+if UIDevice.current.userInterfaceIdiom == .pad {
+    // iPad-specific code
+}
+#endif
+
+// Platform check
+#if os(macOS)
+// macOS-specific code
+#elseif os(iOS)
+// iOS-specific code
+#elseif os(visionOS)
+// visionOS-specific code
+#endif
+```
+
+#### Build Testing
+**ALWAYS test both iOS and macOS builds** before creating PRs:
+```bash
+# Test iOS build
+./scripts/build-test.sh
+
+# Test macOS build
+xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug -destination 'platform=macOS' build
+```
 
 ## Architecture
 
