@@ -24,110 +24,30 @@ struct PeopleListView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    ProgressView("Loading people...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if people.isEmpty {
-                    ContentUnavailableView(
-                        "No People Yet",
-                        systemImage: "person.3",
-                        description: Text("Start adding people you work with to track your conversations")
-                    )
-                    .overlay(alignment: .bottom) {
-                        Button(action: { showingAddPerson = true }) {
-                            Label("Add Your First Person", systemImage: "plus.circle.fill")
-                                .font(.headline)
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
-                        }
-                        .padding(.bottom, 40)
-                    }
-                } else {
-                    List {
-                        // Self person section
-                        Section {
-                            ForEach(people.filter { $0.isSelf == true }) { person in
-                                if isEditMode {
-                                    PersonEditRowView(
-                                        person: person,
-                                        onEdit: {
-                                            personToEdit = person
-                                        },
-                                        onDelete: {
-                                            // Self person can't be deleted
-                                        }
-                                    )
-                                } else {
-                                    NavigationLink(destination: ConversationView(person: person)) {
-                                        PersonRowView(person: person)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Team section
-                        Section {
-                            ForEach(people.filter { $0.isSelf != true }) { person in
-                                if isEditMode {
-                                    PersonEditRowView(
-                                        person: person,
-                                        onEdit: {
-                                            personToEdit = person
-                                        },
-                                        onDelete: {
-                                            personToDelete = person
-                                            showingDeleteConfirmation = true
-                                        }
-                                    )
-                                } else {
-                                    NavigationLink(destination: ConversationView(person: person)) {
-                                        PersonRowView(person: person)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text("My People")
-                        }
-                    }
+            mainContent
+                .navigationTitle("People")
+                .navigationDestination(item: $navigateToNewPerson) { person in
+                    ConversationView(person: person)
                 }
-            }
-            .navigationTitle("People")
-            .navigationDestination(item: $navigateToNewPerson) { person in
-                ConversationView(person: person)
-            }
-            .safeAreaInset(edge: .bottom) {
-                bottomToolbar
-            }
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    if !people.isEmpty && !isEditMode {
-                        Button(action: {
-                            isEditMode.toggle()
-                        }) {
-                            Text("Edit")
-                        }
-                    } else if isEditMode {
-                        Button(action: {
-                            isEditMode.toggle()
-                        }) {
-                            Text("Done")
-                        }
-                    }
+                .safeAreaInset(edge: .bottom) {
+                    bottomToolbar
                 }
-            }
-            .task {
-                await loadPeople()
-            }
+                .toolbar {
+                    editToolbarItem
+                }
+                .task {
+                    await loadPeople()
+                }
             .sheet(isPresented: $showingAddPerson) {
                 AddPersonView(
-                    isPresented: $showingAddPerson,
                     onPersonCreated: { newPerson in
                         people.append(newPerson)
                         people.sort { $0.name < $1.name }
                         navigateToNewPerson = newPerson
+                        showingAddPerson = false
+                    },
+                    onCancel: {
+                        showingAddPerson = false
                     }
                 )
             }
@@ -190,46 +110,136 @@ struct PeopleListView: View {
         }
     }
 
+    @ViewBuilder
+    private var mainContent: some View {
+        if isLoading {
+            ProgressView("Loading people...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if people.isEmpty {
+            emptyStateView
+        } else {
+            peopleListView
+        }
+    }
+
+    private var emptyStateView: some View {
+        ContentUnavailableView(
+            "No People Yet",
+            systemImage: "person.3",
+            description: Text("Start adding people you work with to track your conversations")
+        )
+        .overlay(alignment: .bottom) {
+            Button(action: { showingAddPerson = true }) {
+                Label("Add Your First Person", systemImage: "plus.circle.fill")
+                    .font(.headline)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+            .padding(.bottom, 40)
+        }
+    }
+
+    private var peopleListView: some View {
+        List {
+            // Self person section
+            Section {
+                ForEach(people.filter { $0.isSelf == true }) { person in
+                    personRow(for: person)
+                }
+            }
+
+            // Team section
+            Section {
+                ForEach(people.filter { $0.isSelf != true }) { person in
+                    personRow(for: person)
+                }
+            } header: {
+                Text("My People")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func personRow(for person: Person) -> some View {
+        if isEditMode {
+            PersonEditRowView(
+                person: person,
+                onEdit: {
+                    personToEdit = person
+                },
+                onDelete: {
+                    if person.isSelf != true {
+                        personToDelete = person
+                        showingDeleteConfirmation = true
+                    }
+                }
+            )
+        } else {
+            NavigationLink(destination: ConversationView(person: person)) {
+                PersonRowView(person: person)
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var editToolbarItem: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            if !people.isEmpty {
+                Button(action: {
+                    isEditMode.toggle()
+                }) {
+                    Text(isEditMode ? "Done" : "Edit")
+                }
+            }
+        }
+    }
+
     private var bottomToolbar: some View {
         HStack(spacing: 12) {
-            // Add Person button
-            Button(action: { showingAddPerson = true }) {
-                Label("Add Person", systemImage: "plus")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.borderless)
-
+            addPersonButton
             Spacer()
-
-            // Settings/Options menu
-            Menu {
-                if environmentManager.currentEnvironment == .local {
-                    Button(action: { showEnvironmentPicker = true }) {
-                        Label("Switch Environment", systemImage: "network")
-                    }
-                }
-
-                Button(role: .destructive, action: {
-                    showingDeleteAccountConfirmation = true
-                }) {
-                    Label("Delete Account", systemImage: "trash")
-                }
-
-                Button(action: {
-                    Task {
-                        try? await supabase.signOut()
-                    }
-                }) {
-                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
-            }
-            .menuStyle(.borderlessButton)
+            settingsMenu
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
         .background(.regularMaterial)
+    }
+
+    private var addPersonButton: some View {
+        Button(action: { showingAddPerson = true }) {
+            Label("Add Person", systemImage: "plus")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.borderless)
+    }
+
+    private var settingsMenu: some View {
+        Menu {
+            if environmentManager.currentEnvironment == .local {
+                Button(action: { showEnvironmentPicker = true }) {
+                    Label("Switch Environment", systemImage: "network")
+                }
+            }
+
+            Button(role: .destructive, action: {
+                showingDeleteAccountConfirmation = true
+            }) {
+                Label("Delete Account", systemImage: "trash")
+            }
+
+            Button(action: {
+                Task {
+                    try? await supabase.signOut()
+                }
+            }) {
+                Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .menuStyle(.borderlessButton)
     }
 
     private func loadPeople() async {

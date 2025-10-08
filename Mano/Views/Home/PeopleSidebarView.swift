@@ -9,10 +9,10 @@ import SwiftUI
 
 struct PeopleSidebarView: View {
     @Binding var selectedPerson: Person?
+    @Binding var showingAddPerson: Bool
     @State private var people: [Person] = []
     @State private var isLoading = true
     @State private var errorMessage = ""
-    @State private var showingAddPerson = false
     @State private var isEditMode = false
     @State private var personToEdit: Person? = nil
     @State private var personToDelete: Person? = nil
@@ -38,9 +38,6 @@ struct PeopleSidebarView: View {
         }
         .safeAreaInset(edge: .bottom) {
             bottomToolbar
-        }
-        .sheet(isPresented: $showingAddPerson) {
-            AddPersonView(isPresented: $showingAddPerson, onPersonCreated: handlePersonCreated)
         }
         .sheet(item: $personToEdit) { person in
             editSheet(for: person)
@@ -70,11 +67,6 @@ struct PeopleSidebarView: View {
         }
         .onAppear {
             loadPeople()
-        }
-        .onChange(of: showingAddPerson) { _, isShowing in
-            if !isShowing {
-                loadPeople()
-            }
         }
     }
 
@@ -213,11 +205,6 @@ struct PeopleSidebarView: View {
         .background(.regularMaterial)
     }
 
-    private func handlePersonCreated(_ newPerson: Person) {
-        people.append(newPerson)
-        selectedPerson = newPerson
-        showingAddPerson = false
-    }
 
     @ViewBuilder
     private func editSheet(for person: Person) -> some View {
