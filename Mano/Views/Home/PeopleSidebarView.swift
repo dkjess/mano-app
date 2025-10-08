@@ -200,9 +200,12 @@ struct PeopleSidebarView: View {
             }
             .menuStyle(.borderlessButton)
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.regularMaterial)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
     }
 
 
