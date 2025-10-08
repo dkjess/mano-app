@@ -98,63 +98,22 @@ struct PeopleListView: View {
             .navigationDestination(item: $navigateToNewPerson) { person in
                 ConversationView(person: person)
             }
+            .safeAreaInset(edge: .bottom) {
+                bottomToolbar
+            }
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    // Environment indicator
-                    Button(action: {
-                        showEnvironmentPicker.toggle()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: environmentManager.currentEnvironment.icon)
-                                .font(.caption2)
-                            Text(environmentManager.currentEnvironment == .production ? "Prod" : "Dev")
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(environmentManager.currentEnvironment == .production ?
-                                     Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        )
-                        .foregroundColor(environmentManager.currentEnvironment == .production ?
-                                       .green : .orange)
-                    }
-                }
-
                 ToolbarItem(placement: .primaryAction) {
-                    HStack {
-                        if !isEditMode {
-                            Button(action: { showingAddPerson = true }) {
-                                Image(systemName: "plus")
-                            }
+                    if !people.isEmpty && !isEditMode {
+                        Button(action: {
+                            isEditMode.toggle()
+                        }) {
+                            Text("Edit")
                         }
-
-                        if isEditMode {
-                            Button("Done") {
-                                isEditMode = false
-                            }
-                        } else {
-                            Menu {
-                                Button("Edit List") {
-                                    isEditMode = true
-                                }
-
-                                Divider()
-
-                                Button("Delete Account", role: .destructive) {
-                                    showingDeleteAccountConfirmation = true
-                                }
-
-                                Button("Sign Out") {
-                                    Task {
-                                        try? await supabase.signOut()
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                            }
+                    } else if isEditMode {
+                        Button(action: {
+                            isEditMode.toggle()
+                        }) {
+                            Text("Done")
                         }
                     }
                 }
@@ -230,7 +189,49 @@ struct PeopleListView: View {
             }
         }
     }
-    
+
+    private var bottomToolbar: some View {
+        HStack(spacing: 12) {
+            // Add Person button
+            Button(action: { showingAddPerson = true }) {
+                Label("Add Person", systemImage: "plus")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.borderless)
+
+            Spacer()
+
+            // Settings/Options menu
+            Menu {
+                if environmentManager.currentEnvironment == .local {
+                    Button(action: { showEnvironmentPicker = true }) {
+                        Label("Switch Environment", systemImage: "network")
+                    }
+                }
+
+                Button(role: .destructive, action: {
+                    showingDeleteAccountConfirmation = true
+                }) {
+                    Label("Delete Account", systemImage: "trash")
+                }
+
+                Button(action: {
+                    Task {
+                        try? await supabase.signOut()
+                    }
+                }) {
+                    Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .menuStyle(.borderlessButton)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
+    }
+
     private func loadPeople() async {
         isLoading = true
         do {
