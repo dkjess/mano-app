@@ -1140,27 +1140,30 @@ async function handleStreamingChat({
           // Performance checkpoint: Streaming complete
           performanceTracker?.checkpoint('anthropic_complete');
 
-          // Save the AI response and run intelligence in background
+          // Save the AI response in background (await to ensure it completes before stream ends)
           console.log('🔄 Saving AI response in background...')
-          const saveAIResponsePromise = saveAIResponseInBackground(
-            fullResponse,
-            person_id,
-            user.id,
-            !!isTopicConversation,
-            actualTopicId,
-            userMessage,
-            managementContext,
-            supabase,
-            conversationIdForAI
-          ).catch(error => {
+          try {
+            await saveAIResponseInBackground(
+              fullResponse,
+              person_id,
+              user.id,
+              !!isTopicConversation,
+              actualTopicId,
+              userMessage,
+              managementContext,
+              supabase,
+              conversationIdForAI
+            )
+            console.log('✅ AI response saved successfully')
+          } catch (error) {
             console.error('❌ Background AI response save failed:', error)
-          })
+          }
 
           // Stream completion signal
           const completionData = `data: ${JSON.stringify({ done: true })}\n\n`
           controller.enqueue(encoder.encode(completionData))
 
-          console.log('✅ Streaming complete, background operations running...')
+          console.log('✅ Streaming complete, database operations finished')
         } catch (error) {
           console.error('❌ Streaming error:', error)
 
