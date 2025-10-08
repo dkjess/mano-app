@@ -16,71 +16,65 @@ struct InputComposer: View {
     @FocusState var isInputFocused: Bool
     
     let onSendMessage: () -> Void
-    
-    @State private var backgroundOpacity: Double = 0.8
-    
+
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
     }
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Input area and send button as separate elements
-            HStack(alignment: .bottom, spacing: 12) {
-                // Text input area
-                ZStack(alignment: .leading) {
-                    if messageText.isEmpty && !isInputFocused {
-                        Text("Talk about \(person.name)...")
-                            .foregroundStyle(.tertiary)
-                            .padding(.horizontal, 12)
-                            .allowsHitTesting(false)
-                    }
-
-                    TextEditor(text: $messageText)
-                        .scrollContentBackground(.hidden)
+        HStack(alignment: .bottom, spacing: 8) {
+            // Text input area with integrated send button
+            ZStack(alignment: .bottomTrailing) {
+                // Placeholder
+                if messageText.isEmpty && !isInputFocused {
+                    Text("Talk about \(person.name)...")
+                        .foregroundStyle(.tertiary)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
-                        .frame(minHeight: 36, maxHeight: isInputFocused ? 120 : 60) // More reasonable heights
-                        .fixedSize(horizontal: false, vertical: isInputFocused ? false : true) // Only allow scrolling when focused
-                        .focused($isInputFocused)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .allowsHitTesting(false)
                 }
-                .frame(maxWidth: .infinity)
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(isInputFocused ? AnyShapeStyle(.white) : AnyShapeStyle(.ultraThinMaterial))
-                        .shadow(color: .black.opacity(0.08), radius: 4, x: 0, y: 2)
-                )
 
-                // Send button outside the input area - show when focused or has content
+                // Text editor with padding for send button
+                TextEditor(text: $messageText)
+                    .scrollContentBackground(.hidden)
+                    .padding(.leading, 12)
+                    .padding(.trailing, hasContent || isInputFocused ? 48 : 12) // Extra padding for button
+                    .padding(.vertical, 8)
+                    .frame(minHeight: 36, maxHeight: isInputFocused ? 120 : 60)
+                    .fixedSize(horizontal: false, vertical: isInputFocused ? false : true)
+                    .focused($isInputFocused)
+
+                // Send button inside the input area - bottom right
                 if hasContent || isInputFocused {
                     Button(action: onSendMessage) {
                         Image(systemName: "arrow.up")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(.white)
-                            .frame(width: 36, height: 36)
+                            .frame(width: 32, height: 32)
                             .background(canSend ? Color.blue : Color.gray.opacity(0.5), in: Circle())
                             .scaleEffect(isSending ? 0.9 : 1.0)
                             .animation(.spring(response: 0.2, dampingFraction: 0.7), value: isSending)
                     }
                     .disabled(!canSend)
                     .keyboardShortcut(.return, modifiers: .command)
+                    .padding(.trailing, 8)
+                    .padding(.bottom, 6)
                     .transition(.scale.combined(with: .opacity))
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .onChange(of: isInputFocused) { _, focused in
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    backgroundOpacity = focused ? 0.4 : 0.8
-                }
-            }
+            .frame(maxWidth: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(isInputFocused ? AnyShapeStyle(.white) : AnyShapeStyle(.ultraThinMaterial))
+            )
         }
-        .background(
-            Rectangle()
-                .fill(.ultraThinMaterial)
-                .opacity(backgroundOpacity)
-                .ignoresSafeArea(.container, edges: .bottom)
-        )
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 12)
+        .padding(.bottom, 12)
+        .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
     }
     private var hasContent: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -111,7 +105,8 @@ struct InputComposer: View {
             challenges: nil,
             lastProfilePrompt: nil,
             profileCompletionScore: 20,
-            isSelf: false
+            isSelf: false,
+            startedWorkingTogether: nil
         ),
         messageText: $messageText,
         isSending: $isSending,
