@@ -302,7 +302,11 @@ struct AddPersonView: View {
                     .textFieldStyle(.plain)
                     .font(.title3)
                     .padding(14)
+                    #if os(iOS)
                     .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                    #else
+                    .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+                    #endif
                     .focused($isNameFocused)
             }
 
@@ -316,7 +320,11 @@ struct AddPersonView: View {
                     .textFieldStyle(.plain)
                     .font(.title3)
                     .padding(14)
+                    #if os(iOS)
                     .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                    #else
+                    .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+                    #endif
             }
 
             // Relationship selector - 2x2 grid + other
@@ -384,7 +392,11 @@ struct AddPersonView: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding(14)
+                    #if os(iOS)
                     .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 10))
+                    #else
+                    .background(Color(NSColor.controlBackgroundColor), in: RoundedRectangle(cornerRadius: 10))
+                    #endif
                 }
             }
         }
@@ -482,7 +494,11 @@ struct RelationshipButton: View {
             .frame(height: 90)
             .background(
                 RoundedRectangle(cornerRadius: 16)
+                    #if os(iOS)
                     .fill(isSelected ? Color.blue : Color(.systemGray6))
+                    #else
+                    .fill(isSelected ? Color.blue : Color(NSColor.controlBackgroundColor))
+                    #endif
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 16)
