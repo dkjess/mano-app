@@ -60,7 +60,16 @@ class SupabaseAuthManager: ObservableObject {
         }
 
         do {
-            // Redirect dev@mano.local to real email for testing
+            // Dev auto-login: If using Local environment and dev@mano.local, sign in directly with password
+            let currentEnv = BackendEnvironmentManager.shared.currentEnvironment
+            if email == "dev@mano.local" && (currentEnv == .local || currentEnv == .localhost) {
+                print("🔧 Dev mode: Auto-signing in with password for Local environment")
+                try await client.auth.signIn(email: email, password: "dev123456")
+                print("✅ Dev user signed in successfully")
+                return
+            }
+
+            // Redirect dev@mano.local to real email for Production magic links
             let actualEmail = email == "dev@mano.local" ? "dkjess+manodev@gmail.com" : email
 
             if email != actualEmail {
