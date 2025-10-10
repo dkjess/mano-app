@@ -8,6 +8,9 @@
 import SwiftUI
 import NaturalLanguage
 import Auth
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct ConversationView: View {
     let person: Person
@@ -46,7 +49,9 @@ struct ConversationView: View {
             }
         }
         .navigationTitle(person.name)
+        #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
+        #endif
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
@@ -477,6 +482,7 @@ struct ConversationView: View {
             }
             .joined(separator: "\n\n")
 
+        #if os(iOS)
         let activityVC = UIActivityViewController(
             activityItems: [conversationText],
             applicationActivities: nil
@@ -486,6 +492,12 @@ struct ConversationView: View {
            let window = windowScene.windows.first {
             window.rootViewController?.present(activityVC, animated: true)
         }
+        #else
+        // On macOS, copy to pasteboard
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(conversationText, forType: .string)
+        #endif
     }
 
     private func startNewConversation() async {

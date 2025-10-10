@@ -91,7 +91,9 @@ struct EditPersonView: View {
                     TextField("Location (optional)", text: $location)
                     
                     TextField("Emoji (optional)", text: $emoji)
+                        #if os(iOS)
                         .textInputAutocapitalization(.never)
+                        #endif
                 }
                 
                 Section("Relationship") {
@@ -124,7 +126,9 @@ struct EditPersonView: View {
                 }
             }
             .navigationTitle("Edit Person")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {

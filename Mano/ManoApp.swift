@@ -21,19 +21,24 @@ struct ManoApp: App {
                     print("🎯 RootView appeared")
                 }
                 .onOpenURL { url in
-                    print("🔗 Received deep link URL: \(url)")
-                    handleDeepLink(url)
+                    print("🔗 Received custom URL scheme: \(url)")
+                    handleLink(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    guard let url = userActivity.webpageURL else { return }
+                    print("🌐 Received universal link: \(url)")
+                    handleLink(url)
                 }
         }
     }
 
-    private func handleDeepLink(_ url: URL) {
+    private func handleLink(_ url: URL) {
         Task {
             do {
                 try await SupabaseManager.shared.auth.handleDeepLink(url: url)
-                print("✅ Successfully handled deep link")
+                print("✅ Successfully handled link")
             } catch {
-                print("❌ Failed to handle deep link: \(error)")
+                print("❌ Failed to handle link: \(error)")
             }
         }
     }

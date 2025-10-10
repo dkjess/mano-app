@@ -23,7 +23,7 @@ class SupabaseMessagesManager {
 
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw MessagingError.notAuthenticated
         }
 
         print("🔍 User ID: \(userId.uuidString)")
@@ -99,7 +99,7 @@ class SupabaseMessagesManager {
         
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw MessagingError.notAuthenticated
         }
         
         // First, insert the user's message
@@ -126,7 +126,7 @@ class SupabaseMessagesManager {
         
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw MessagingError.notAuthenticated
         }
         
         // First, insert the user's message
@@ -152,8 +152,19 @@ class SupabaseMessagesManager {
         print("🌊 Starting streaming chat function")
         print("📝 Message content: \(content)")
         print("👤 Person ID: \(personId.uuidString.lowercased())")
-        
-        let session = try await client.auth.session
+
+        // Use a more robust session approach to avoid refresh race conditions
+        let session: Session
+        do {
+            session = try await client.auth.session
+            print("✅ Session obtained successfully")
+        } catch {
+            print("❌ Failed to get session: \(error)")
+            // Try one retry after a brief delay in case of transient auth issues
+            try await Task.sleep(nanoseconds: Timeouts.sessionRetry)
+            session = try await client.auth.session
+            print("✅ Session obtained on retry")
+        }
         
         // Request streaming response from backend
         let requestBody: [String: Any] = [
@@ -175,21 +186,32 @@ class SupabaseMessagesManager {
         request.httpBody = jsonData
         
         print("🌐 Starting streaming request to: \(supabaseURL)/functions/v1/chat")
-        
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "SupabaseMessagesManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        print("🔑 Using token ending in: ...\(String(session.accessToken.suffix(8)))")
+
+        let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: request)
+            print("✅ HTTP request initiated successfully")
+        } catch {
+            print("❌ HTTP request failed: \(error)")
+            throw error
         }
-        
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Invalid HTTP response type")
+            throw MessagingError.invalidResponse
+        }
+
+        print("📊 HTTP Response Status: \(httpResponse.statusCode)")
+
         if httpResponse.statusCode != 200 {
             var errorData = Data()
             for try await byte in bytes {
                 errorData.append(byte)
             }
             let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            print("❌ Chat API error: \(errorMessage)")
-            throw NSError(domain: "SupabaseMessagesManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            print("❌ Chat API error (Status \(httpResponse.statusCode)): \(errorMessage)")
+            throw MessagingError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
         }
         
         print("🌊 Starting to process SSE stream...")
@@ -265,7 +287,7 @@ class SupabaseMessagesManager {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "SupabaseMessagesManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+            throw MessagingError.invalidResponse
         }
         
         print("📡 Chat API response status: \(httpResponse.statusCode)")
@@ -274,7 +296,7 @@ class SupabaseMessagesManager {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             print("❌ Chat API error: \(errorMessage)")
             print("📄 Full response data: \(data)")
-            throw NSError(domain: "SupabaseMessagesManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            throw MessagingError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
         }
         
         print("✅ AI response received successfully")

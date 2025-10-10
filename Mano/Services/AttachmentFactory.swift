@@ -18,6 +18,7 @@ import CoreLocation
 // MARK: - Attachment Factory
 
 class AttachmentFactory {
+    #if os(iOS)
     static func createAttachment(from image: UIImage, type: AttachmentType = .image) -> Attachment {
         let imageData = image.jpegData(compressionQuality: 0.8) ?? Data()
         var attachment = Attachment(
@@ -33,7 +34,8 @@ class AttachmentFactory {
         attachment.metadata = extractMetadata(from: image)
         return attachment
     }
-    
+    #endif
+
     static func createAttachment(from url: URL) async -> Attachment? {
         guard url.startAccessingSecurityScopedResource() else { return nil }
         defer { url.stopAccessingSecurityScopedResource() }
@@ -52,8 +54,10 @@ class AttachmentFactory {
             
             attachment.url = url
             attachment.data = data
+            #if os(iOS)
             attachment.thumbnail = await generateThumbnail(from: data, type: type, url: url)
             attachment.metadata = await extractMetadata(from: url, data: data, type: type)
+            #endif
             
             return attachment
         } catch {
@@ -96,7 +100,8 @@ class AttachmentFactory {
             return .document
         }
     }
-    
+
+    #if os(iOS)
     private static func generateThumbnail(from image: UIImage) -> UIImage? {
         let size = CGSize(width: 120, height: 120)
         return image.preparingThumbnail(of: size)
@@ -197,7 +202,8 @@ class AttachmentFactory {
         metadata.title = document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String
         metadata.author = document.documentAttributes?[PDFDocumentAttribute.authorAttribute] as? String
         metadata.subject = document.documentAttributes?[PDFDocumentAttribute.subjectAttribute] as? String
-        
+
         return metadata
     }
+    #endif
 }

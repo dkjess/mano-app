@@ -6,6 +6,9 @@
 //
 
 import SwiftUI
+#if canImport(AppKit)
+import AppKit
+#endif
 
 struct ConversationDetailView: View {
     let conversation: Conversation
@@ -34,7 +37,9 @@ struct ConversationDetailView: View {
                 .padding(.top)
             }
             .navigationTitle(conversationTitle)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -69,6 +74,7 @@ struct ConversationDetailView: View {
             }
             .joined(separator: "\n\n")
 
+        #if os(iOS)
         let activityVC = UIActivityViewController(
             activityItems: [conversationText],
             applicationActivities: nil
@@ -78,5 +84,11 @@ struct ConversationDetailView: View {
            let window = windowScene.windows.first {
             window.rootViewController?.present(activityVC, animated: true)
         }
+        #else
+        // On macOS, copy to pasteboard
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(conversationText, forType: .string)
+        #endif
     }
 }

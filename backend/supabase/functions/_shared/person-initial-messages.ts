@@ -6,7 +6,7 @@
 export interface PersonContext {
   name: string
   role?: string
-  relationship_type: 'direct_report' | 'manager' | 'peer' | 'stakeholder'
+  relationship_type: 'direct_report' | 'manager' | 'peer' | 'stakeholder' | 'self'
   team?: string
   context?: string // Why they're being added
   current_situation?: string // What's happening now
@@ -79,6 +79,21 @@ export function getConversationStarters(
   const starters: string[] = []
   
   switch (person.relationship_type) {
+    case 'self':
+      starters.push(
+        `What am I feeling about my work right now?`,
+        `What patterns do I notice in my management style?`,
+        `What growth areas should I focus on?`
+      )
+      if (includeDeep) {
+        starters.push(
+          `How am I balancing my priorities?`,
+          `What successes should I acknowledge?`,
+          `What's weighing on me as a manager?`
+        )
+      }
+      break
+
     case 'direct_report':
       starters.push(
         `What's ${person.name}'s biggest priority right now?`,
@@ -93,7 +108,7 @@ export function getConversationStarters(
         )
       }
       break
-      
+
     case 'manager':
       starters.push(
         `What expectations does ${person.name} have for your team?`,
@@ -172,6 +187,18 @@ export function getProfileBuildingQuestions(
 
 function getTemplatesByRelationship(type: string): Record<string, MessageTemplate> {
   const templates: Record<string, Record<string, MessageTemplate>> = {
+    self: {
+      default: {
+        primary: `Welcome! I'm here to help you reflect on your work, grow as a manager, and think through the challenges you're facing.`,
+        followUp: `What's on your mind right now?`
+      },
+      contextual: {
+        primary: `I'm here to help you work through [context]. What would be most helpful to explore?`
+      },
+      situational: {
+        primary: `I see you're [situation]. Let's work through this together—what's weighing on you most?`
+      }
+    },
     direct_report: {
       default: {
         primary: `I see you've added [name] to your team. What's the most important thing you'd like to work on with them right now?`,

@@ -20,7 +20,7 @@ enum BackendEnvironment: String, CaseIterable {
             return "https://zfroutbzdkhivnpiezho.supabase.co"
         case .local:
             // Current ngrok tunnel - update when restarted
-            return "https://393bc63fcbf6.ngrok-free.app"
+            return "https://9453b9716e22.ngrok-free.app"
         case .localhost:
             return "http://127.0.0.1:54321"
         }

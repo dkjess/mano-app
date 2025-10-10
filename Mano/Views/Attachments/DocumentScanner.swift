@@ -6,12 +6,17 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
 import UIKit
+#endif
+#if canImport(VisionKit)
 import VisionKit
+#endif
 import Vision
 
 // MARK: - Document Scanner View
 
+#if os(iOS)
 struct DocumentScannerView: UIViewControllerRepresentable {
     let onScanComplete: ([UIImage]) -> Void
     let onCancel: () -> Void
@@ -141,9 +146,11 @@ class PDFCreator {
         return pdfData
     }
 }
+#endif
 
 // MARK: - Document Scanner Integration View
 
+#if os(iOS)
 struct DocumentScannerIntegration: View {
     let onScanComplete: (Attachment) -> Void
     let onCancel: () -> Void
@@ -232,3 +239,4 @@ struct DocumentScannerIntegration: View {
         }
     }
 }
+#endif

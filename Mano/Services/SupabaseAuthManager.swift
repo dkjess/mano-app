@@ -60,11 +60,20 @@ class SupabaseAuthManager: ObservableObject {
         }
 
         do {
+            // Redirect dev@mano.local to real email for testing
+            let actualEmail = email == "dev@mano.local" ? "dkjess+manodev@gmail.com" : email
+
+            if email != actualEmail {
+                print("🔧 Dev mode: Redirecting \(email) → \(actualEmail)")
+            }
+
+            // Use shouldCreateUser: true to auto-create account if needed
             try await client.auth.signInWithOTP(
-                email: email,
-                redirectTo: URL(string: "mano://login-callback")
+                email: actualEmail,
+                redirectTo: URL(string: "mano://login-callback"),
+                shouldCreateUser: true
             )
-            print("✅ Magic link sent successfully to \(email)")
+            print("✅ Magic link sent successfully to \(actualEmail)")
         } catch {
             print("❌ Failed to send magic link: \(error)")
             errorMessage = error.localizedDescription
