@@ -48,15 +48,10 @@ struct ManoHomeView: View {
     private var detailView: some View {
         if showingAddPerson {
             AddPersonView(
+                isPresented: $showingAddPerson,
                 onPersonCreated: { person in
                     withAnimation(.easeInOut(duration: 0.3)) {
                         selectedPerson = person
-                        showingAddPerson = false
-                    }
-                },
-                onCancel: {
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        showingAddPerson = false
                     }
                 }
             )

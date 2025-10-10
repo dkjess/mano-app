@@ -34,14 +34,11 @@ struct PeopleListView: View {
                 }
             .sheet(isPresented: $showingAddPerson) {
                 AddPersonView(
+                    isPresented: $showingAddPerson,
                     onPersonCreated: { newPerson in
                         people.append(newPerson)
                         people.sort { $0.name < $1.name }
                         navigateToNewPerson = newPerson
-                        showingAddPerson = false
-                    },
-                    onCancel: {
-                        showingAddPerson = false
                     }
                 )
             }
