@@ -19,8 +19,8 @@ enum BackendEnvironment: String, CaseIterable {
         case .production:
             return "https://zfroutbzdkhivnpiezho.supabase.co"
         case .local:
-            // Current ngrok tunnel - update when restarted
-            return "https://9453b9716e22.ngrok-free.app"
+            // Permanent ngrok domain
+            return "https://mano.ngrok.app"
         case .localhost:
             return "http://127.0.0.1:54321"
         }
@@ -72,8 +72,8 @@ class BackendEnvironmentManager: ObservableObject {
     private init() {
         // Initialize currentEnvironment first
         #if DEBUG
-        // Default to local for debug builds
-        self.currentEnvironment = .local
+        // Default to production even for debug builds
+        self.currentEnvironment = .production
         #else
         // Default to production for release builds
         self.currentEnvironment = .production

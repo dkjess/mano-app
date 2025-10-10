@@ -8,7 +8,7 @@ echo "🔍 Checking for ngrok tunnel..."
 # Check if ngrok is running
 if ! pgrep -f "ngrok" > /dev/null; then
     echo "❌ ngrok is not running"
-    echo "   Start ngrok with: ngrok http 54321"
+    echo "   Start ngrok with: ngrok http --url=mano.ngrok.app 54321"
     exit 1
 fi
 
@@ -19,17 +19,17 @@ if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
     echo "✅ ngrok tunnel is running"
     echo ""
     echo "📋 Device Testing URLs:"
-    echo "   Public URL: $NGROK_URL"
+    echo "   Public URL: $NGROK_URL (permanent domain)"
     echo "   Local URL:  http://127.0.0.1:54321"
     echo "   Web UI:     http://localhost:4040"
     echo ""
     echo "📱 To test on iOS device:"
-    echo "   1. Update Mano/Config.swift supabaseURL to:"
-    echo "      $NGROK_URL"
-    echo "   2. Build and run on device via Xcode"
-    echo "   3. Remember to revert to localhost for simulator"
+    echo "   1. Build and run on device via Xcode"
+    echo "   2. Shake device to access developer settings"
+    echo "   3. Select 'Local (ngrok)' environment"
+    echo "   Note: BackendEnvironment.swift already configured with mano.ngrok.app"
 else
     echo "❌ Could not get ngrok URL"
-    echo "   Check if ngrok is properly running with: ngrok http 54321"
+    echo "   Check if ngrok is properly running with: ngrok http --url=mano.ngrok.app 54321"
     echo "   Web interface: http://localhost:4040"
 fi
