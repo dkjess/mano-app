@@ -59,9 +59,7 @@ struct NewConversationSheet: View {
             }
             .padding()
             .navigationTitle("New Conversation")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
-            #endif
         }
     }
 }

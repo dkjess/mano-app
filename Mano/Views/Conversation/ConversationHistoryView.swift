@@ -33,9 +33,7 @@ struct ConversationHistoryView: View {
                 }
             }
             .navigationTitle("History")
-            #if os(iOS)
             .navigationBarTitleDisplayMode(.large)
-            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") {
