@@ -11,12 +11,10 @@ struct StreamingTextView: View {
     let text: String
     @State private var displayedText = ""
     @State private var opacity: Double = 0
-    @State private var bufferTimer: Timer?
-    @State private var pendingChunks: [String] = []
 
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
-            // Display all text as one continuous block
+            // Display all text as one continuous block with smooth reveal
             Text(displayedText)
                 .opacity(opacity)
 
@@ -29,39 +27,23 @@ struct StreamingTextView: View {
             }
         }
         .onAppear {
-            withAnimation(.easeIn(duration: 0.3)) {
+            // Initial fade in for the whole view
+            withAnimation(.easeIn(duration: 0.2)) {
                 opacity = 1
             }
         }
         .onChange(of: text) { oldValue, newValue in
             if newValue.count > oldValue.count {
-                // New text was added
+                // New text was added - append immediately with smooth animation
                 let newContent = String(newValue.dropFirst(oldValue.count))
-                pendingChunks.append(newContent)
 
-                // Cancel existing timer
-                bufferTimer?.invalidate()
-
-                // Process chunks with buffering
-                bufferTimer = Timer.scheduledTimer(withTimeInterval: 0.03, repeats: false) { _ in
-                    if !pendingChunks.isEmpty {
-                        // Add all pending chunks at once for smooth flow
-                        let allPending = pendingChunks.joined()
-                        pendingChunks.removeAll()
-
-                        withAnimation(.easeOut(duration: 0.1)) {
-                            displayedText += allPending
-                        }
-                    }
+                withAnimation(.spring(response: 0.15, dampingFraction: 1.0)) {
+                    displayedText += newContent
                 }
             } else if newValue.isEmpty {
                 // Reset when text is cleared
                 displayedText = ""
-                pendingChunks.removeAll()
             }
-        }
-        .onDisappear {
-            bufferTimer?.invalidate()
         }
     }
 }

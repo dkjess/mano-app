@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@available(iOS 26.0, *)
 struct PeopleSidebarView: View {
     @Binding var selectedPerson: Person?
     @Binding var showingAddPerson: Bool
