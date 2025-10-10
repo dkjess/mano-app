@@ -100,11 +100,7 @@ class SupabaseManager: ObservableObject {
     }
     
     // MARK: - Convenience methods that delegate to sub-managers
-    
-    func signIn(email: String, password: String) async throws {
-        try await auth.signIn(email: email, password: password)
-    }
-    
+
     func signOut() async throws {
         try await auth.signOut()
     }

@@ -13,13 +13,28 @@ struct ManoApp: App {
     init() {
         print("🚀 ManoApp initializing...")
     }
-    
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .onAppear {
                     print("🎯 RootView appeared")
                 }
+                .onOpenURL { url in
+                    print("🔗 Received deep link URL: \(url)")
+                    handleDeepLink(url)
+                }
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        Task {
+            do {
+                try await SupabaseManager.shared.auth.handleDeepLink(url: url)
+                print("✅ Successfully handled deep link")
+            } catch {
+                print("❌ Failed to handle deep link: \(error)")
+            }
         }
     }
 }
@@ -35,7 +50,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
             if !supabase.isAuthenticated {
                 WelcomeView()
             } else if isCheckingProfile {
@@ -46,7 +61,11 @@ struct RootView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #if os(iOS)
                 .background(Color(.systemBackground))
+                #else
+                .background(Color(NSColor.windowBackgroundColor))
+                #endif
             } else if needsFoundationProfile {
                 OnboardingFlowView()
             } else {
