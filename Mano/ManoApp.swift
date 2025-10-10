@@ -48,6 +48,7 @@ struct RootView: View {
     @ObservedObject private var supabase = SupabaseManager.shared
     @State private var needsFoundationProfile = false
     @State private var isCheckingProfile = true
+    @State private var showEnvironmentPicker = false
 
     init() {
         print("🔧 RootView initializing...")
@@ -103,6 +104,12 @@ struct RootView: View {
             if supabase.isAuthenticated {
                 await checkProfileStatus()
             }
+        }
+        .sheet(isPresented: $showEnvironmentPicker) {
+            EnvironmentPickerView()
+        }
+        .onShake {
+            showEnvironmentPicker = true
         }
     }
 
