@@ -29,9 +29,6 @@ struct PeopleListView: View {
                 .navigationDestination(item: $navigateToNewPerson) { person in
                     ConversationView(person: person)
                 }
-                .toolbar {
-                    settingsToolbarItem
-                }
                 .task {
                     await loadPeople()
                 }
@@ -156,17 +153,71 @@ struct PeopleListView: View {
                 Text("My People")
             }
 
-            // Bottom buttons section
+            // Bottom glass buttons section
             Section {
-                Button(action: { showingAddPerson = true }) {
-                    Label("Add Person", systemImage: "plus.circle.fill")
-                        .foregroundStyle(.blue)
-                }
+                HStack(spacing: 12) {
+                    // Left: Add Person button
+                    Button(action: { showingAddPerson = true }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                            Text("Add Person")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.blue)
+                        )
+                    }
+                    .buttonStyle(.plain)
 
-                Button(action: { showEnvironmentPicker = true }) {
-                    Label("Developer Settings", systemImage: "gearshape")
-                        .foregroundStyle(.secondary)
+                    // Right: Settings menu button
+                    Menu {
+                        if !people.isEmpty {
+                            Button(action: {
+                                isEditMode.toggle()
+                            }) {
+                                Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
+                            }
+                            Divider()
+                        }
+
+                        if environmentManager.currentEnvironment == .local {
+                            Button(action: { showEnvironmentPicker = true }) {
+                                Label("Switch Environment", systemImage: "network")
+                            }
+                        }
+
+                        Button(role: .destructive, action: {
+                            showingDeleteAccountConfirmation = true
+                        }) {
+                            Label("Delete Account", systemImage: "trash")
+                        }
+
+                        Button(action: {
+                            Task {
+                                try? await supabase.auth.signOut()
+                            }
+                        }) {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+                            .frame(width: 54, height: 54)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray5))
+                            )
+                    }
+                    .buttonStyle(.plain)
                 }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.insetGrouped)
@@ -190,44 +241,6 @@ struct PeopleListView: View {
         } else {
             NavigationLink(destination: ConversationView(person: person)) {
                 PersonRowView(person: person)
-            }
-        }
-    }
-
-    @ToolbarContentBuilder
-    private var settingsToolbarItem: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Menu {
-                if !people.isEmpty {
-                    Button(action: {
-                        isEditMode.toggle()
-                    }) {
-                        Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
-                    }
-                    Divider()
-                }
-
-                if environmentManager.currentEnvironment == .local {
-                    Button(action: { showEnvironmentPicker = true }) {
-                        Label("Switch Environment", systemImage: "network")
-                    }
-                }
-
-                Button(role: .destructive, action: {
-                    showingDeleteAccountConfirmation = true
-                }) {
-                    Label("Delete Account", systemImage: "trash")
-                }
-
-                Button(action: {
-                    Task {
-                        try? await supabase.auth.signOut()
-                    }
-                }) {
-                    Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                }
-            } label: {
-                Image(systemName: "ellipsis.circle")
             }
         }
     }
