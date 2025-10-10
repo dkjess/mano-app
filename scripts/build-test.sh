@@ -1,20 +1,20 @@
 #!/bin/bash
 
 # Build test script for Mano iOS app
-# Always uses iPhone 16 Pro with iOS 26.0 for consistency
+# Always uses iPhone 17 with iOS 26.0 for consistency
 
 set -e
 
 echo "🔨 Testing Mano iOS Build"
 echo "========================="
-echo "Target: iPhone 16 Pro (iOS 26.0)"
+echo "Target: iPhone 17 (iOS 26.0)"
 echo ""
 
 # Set consistent build parameters
 PROJECT="Mano.xcodeproj"
 SCHEME="Mano"
 CONFIGURATION="Debug"
-DESTINATION="platform=iOS Simulator,name=iPhone 16 Pro,OS=26.0"
+DESTINATION="platform=iOS Simulator,name=iPhone 17,OS=26.0"
 
 # Run the build and capture output
 echo "🚀 Starting build..."

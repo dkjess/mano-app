@@ -47,7 +47,9 @@ struct EditSelfProfileView: View {
                             .foregroundColor(.secondary)
                         TextField("What should we call you?", text: $preferredName)
                             .focused($isNameFocused)
+                            #if os(iOS)
                             .textInputAutocapitalization(.words)
+                            #endif
                             .autocorrectionDisabled()
                     }
 
@@ -56,7 +58,9 @@ struct EditSelfProfileView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         TextField("What do people call you day-to-day?", text: $callName)
+                            #if os(iOS)
                             .textInputAutocapitalization(.words)
+                            #endif
                             .autocorrectionDisabled()
                     }
 
@@ -65,7 +69,9 @@ struct EditSelfProfileView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         TextField("Your job title", text: $jobRole)
+                            #if os(iOS)
                             .textInputAutocapitalization(.words)
+                            #endif
                             .autocorrectionDisabled()
                     }
 
@@ -74,7 +80,9 @@ struct EditSelfProfileView: View {
                             .font(.caption)
                             .foregroundColor(.secondary)
                         TextField("Where do you work?", text: $company)
+                            #if os(iOS)
                             .textInputAutocapitalization(.words)
+                            #endif
                             .autocorrectionDisabled()
                     }
                 }
@@ -86,7 +94,9 @@ struct EditSelfProfileView: View {
                 }
             }
             .navigationTitle("Edit Profile")
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
@@ -150,7 +160,7 @@ struct EditSelfProfileView: View {
         isUpdating = true
 
         do {
-            try await profileManager.updateFoundationProfile(
+            try await profileManager.updateBasicProfile(
                 preferredName: preferredName.trimmingCharacters(in: .whitespacesAndNewlines),
                 callName: callName.trimmingCharacters(in: .whitespacesAndNewlines),
                 jobRole: jobRole.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -178,7 +188,8 @@ struct EditSelfProfileView: View {
                 challenges: person.challenges,
                 lastProfilePrompt: person.lastProfilePrompt,
                 profileCompletionScore: person.profileCompletionScore,
-                isSelf: person.isSelf
+                isSelf: person.isSelf,
+                startedWorkingTogether: person.startedWorkingTogether
             )
 
             await MainActor.run {
@@ -214,7 +225,8 @@ struct EditSelfProfileView: View {
         challenges: nil,
         lastProfilePrompt: nil,
         profileCompletionScore: nil,
-        isSelf: true
+        isSelf: true,
+        startedWorkingTogether: nil
     )
 
     EditSelfProfileView(

@@ -12,6 +12,7 @@ import Combine
 
 // MARK: - Voice Message Recorder
 
+#if os(iOS)
 @MainActor
 class VoiceMessageRecorder: NSObject, ObservableObject {
     @Published var isRecording = false
@@ -495,3 +496,4 @@ struct WaveformProgressView: View {
         }
     }
 }
+#endif

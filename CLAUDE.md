@@ -137,11 +137,70 @@ The iOS app is designed as a thin client that connects to the existing Supabase 
 
 ## Swift Development Standards
 
-**MANDATORY**: This project requires iOS 26.0+ and uses the latest Swift/SwiftUI APIs. 
+**MANDATORY**: This project requires iOS 26.0+ and uses the latest Swift/SwiftUI APIs.
 - **Never use deprecated APIs** - Always check for deprecation warnings
 - **Always use the most modern syntax** available in Swift and SwiftUI
 - **Follow Apple's latest design guidelines** and API patterns
 - **Test on latest iOS versions** - The app targets cutting-edge iOS features
+
+### Platform-Specific Code Requirements
+
+**CRITICAL**: This is a multi-platform app (iOS, macOS, visionOS). Always use platform checks for platform-specific APIs.
+
+#### Colors
+**WRONG:**
+```swift
+.background(Color(.systemGray6))  // ❌ iOS-only, crashes on macOS
+```
+
+**CORRECT:**
+```swift
+#if os(iOS)
+.background(Color(.systemGray6))
+#else
+.background(Color(NSColor.controlBackgroundColor))
+#endif
+```
+
+**Common Platform-Specific Colors:**
+- `UIColor.systemGray6` → iOS only
+- `UIColor.systemBackground` → iOS only
+- `NSColor.controlBackgroundColor` → macOS only
+- `NSColor.windowBackgroundColor` → macOS only
+
+**Safe Cross-Platform Colors:**
+- `Color.gray`, `Color.blue`, `Color.red`, etc. (built-in SwiftUI colors)
+- `Color.primary`, `Color.secondary` (semantic colors)
+- `.background`, `.regularMaterial` (SwiftUI materials)
+
+#### Device/Platform Checks
+```swift
+// Check device type (iOS only)
+#if os(iOS)
+if UIDevice.current.userInterfaceIdiom == .pad {
+    // iPad-specific code
+}
+#endif
+
+// Platform check
+#if os(macOS)
+// macOS-specific code
+#elseif os(iOS)
+// iOS-specific code
+#elseif os(visionOS)
+// visionOS-specific code
+#endif
+```
+
+#### Build Testing
+**ALWAYS test both iOS and macOS builds** before creating PRs:
+```bash
+# Test iOS build
+./scripts/build-test.sh
+
+# Test macOS build
+xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug -destination 'platform=macOS' build
+```
 
 ## Architecture
 
@@ -185,8 +244,8 @@ supabase start
 # 3. CRITICAL: Serve Edge Functions with environment variables
 supabase functions serve --env-file .env.local
 
-# 4. Start ngrok for device testing (in separate terminal)
-ngrok http 54321
+# 4. Start ngrok for device testing (permanent custom domain)
+ngrok http --url=mano.ngrok.app 54321
 
 # 5. Seed test data (includes self person creation)
 npm run seed:dev
@@ -309,35 +368,33 @@ xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug
 - **No assumptions**: Never assume code compiles without testing
 
 ### Device Testing with ngrok
-For testing on physical iOS devices, use ngrok to tunnel local Supabase:
+For testing on physical iOS devices, use ngrok to tunnel local Supabase.
+
+**Permanent ngrok domain:** `https://mano.ngrok.app`
 
 **Automated (via dev-setup.sh):**
 - The setup script will prompt to start ngrok and show you the public URL
 
 **Manual:**
 ```bash
-# 1. Start ngrok tunnel (in separate terminal)
-ngrok http 54321
+# 1. Start ngrok tunnel with custom domain (in separate terminal)
+ngrok http --url=mano.ngrok.app 54321
 
-# 2. Get the tunnel URL (convenience script)
-./scripts/get-ngrok-url.sh
-
-# OR manually:
+# 2. Verify tunnel is running
 curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url'
+# Should output: https://mano.ngrok.app
 
-# 3. Update Config.swift with the ngrok URL
-# Replace DEBUG supabaseURL with: https://[your-ngrok-id].ngrok-free.app
-
-# 4. Build and install on device via Xcode
+# 3. Build and install on device via Xcode
 ```
 
 **Important:**
-- Update `Mano/Config.swift` to use the ngrok URL for device testing
-- Revert to localhost for simulator testing
-- ngrok generates a new URL each restart
+- ngrok now uses a permanent custom domain: `mano.ngrok.app`
+- No need to update BackendEnvironment.swift - already configured
+- Use shake gesture in app to switch between Production/Local/Localhost
+- Simulator uses localhost (127.0.0.1:54321) by default
 
 ### Service URLs (when running locally)
-- **Supabase API:** http://127.0.0.1:54321 (simulator) / https://[ngrok-id].ngrok-free.app (device)
+- **Supabase API:** http://127.0.0.1:54321 (simulator) / https://mano.ngrok.app (device)
 - **Supabase Studio:** http://127.0.0.1:54323
 - **Edge Functions:** http://127.0.0.1:54321/functions/v1/
 - **Database:** postgresql://postgres:postgres@127.0.0.1:54322/postgres
@@ -392,9 +449,10 @@ supabase functions deploy  # If linked to production - DANGEROUS
 - **Edge Functions authentication errors:** Always use `--env-file .env.local`
 - **Chat API 500 errors:** Ensure logged in with test user and Supabase is running
 - **"User already exists":** Normal - use `npm run seed:dev reset` to start fresh
-- **Device testing issues:** Ensure ngrok tunnel is running and Config.swift uses correct ngrok URL
-- **ngrok URL changes:** Each ngrok restart generates a new URL - update Config.swift accordingly
+- **Device testing issues:** Ensure ngrok tunnel is running with `ngrok http --url=mano.ngrok.app 54321`
+- **ngrok permanent domain:** Now uses `mano.ngrok.app` - no need to update config after restarts
 - **No ngrok tunnel:** Check if ngrok is installed (`brew install ngrok`) and port 4040 is accessible
+- **Environment switching:** Shake device in app to access developer settings and switch between Production/Local/Localhost
 
 ## iOS Client Integration
 

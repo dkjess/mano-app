@@ -85,11 +85,12 @@ if [[ $start_ngrok =~ ^[Yy]$ ]]; then
         echo "   Install ngrok from: https://ngrok.com/download"
         echo "   Or use: brew install ngrok"
     else
-        echo "🔄 Starting ngrok tunnel for Supabase..."
+        echo "🔄 Starting ngrok tunnel for Supabase with custom domain..."
         echo "   This will run in the background. Use 'pkill ngrok' to stop."
+        echo "   Using permanent domain: mano.ngrok.app"
 
-        # Start ngrok in background
-        nohup ngrok http 54321 > ngrok.log 2>&1 &
+        # Start ngrok in background with custom domain
+        nohup ngrok http --url=mano.ngrok.app 54321 > ngrok.log 2>&1 &
         NGROK_PID=$!
 
         # Wait for ngrok to start
@@ -100,22 +101,23 @@ if [[ $start_ngrok =~ ^[Yy]$ ]]; then
 
         if [ -n "$NGROK_URL" ] && [ "$NGROK_URL" != "null" ]; then
             echo "✅ ngrok tunnel is running"
-            echo "   Public URL: $NGROK_URL"
+            echo "   Public URL: $NGROK_URL (permanent domain)"
             echo "   Local URL: http://127.0.0.1:54321"
             echo "   ngrok Web Interface: http://localhost:4040"
             echo "   PID: $NGROK_PID"
             echo ""
             echo "📋 To test on iOS device:"
-            echo "   1. Update Mano/Config.swift supabaseURL to: $NGROK_URL"
-            echo "   2. Build and run on device via Xcode"
-            echo "   3. Remember to revert Config.swift to localhost for simulator testing"
+            echo "   1. Build and run on device via Xcode"
+            echo "   2. Shake device to access developer settings"
+            echo "   3. Select 'Local (ngrok)' environment"
+            echo "   Note: BackendEnvironment.swift already configured with mano.ngrok.app"
         else
             echo "❌ Failed to get ngrok URL. Check ngrok.log for details."
         fi
     fi
 else
     echo "⏭️  Skipping ngrok setup"
-    echo "   You can start it later with: ngrok http 54321"
+    echo "   You can start it later with: ngrok http --url=mano.ngrok.app 54321"
 fi
 
 echo ""

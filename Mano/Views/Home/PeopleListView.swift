@@ -24,144 +24,14 @@ struct PeopleListView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if isLoading {
-                    ProgressView("Loading people...")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if people.isEmpty {
-                    ContentUnavailableView(
-                        "No People Yet",
-                        systemImage: "person.3",
-                        description: Text("Start adding people you work with to track your conversations")
-                    )
-                    .overlay(alignment: .bottom) {
-                        Button(action: { showingAddPerson = true }) {
-                            Label("Add Your First Person", systemImage: "plus.circle.fill")
-                                .font(.headline)
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundStyle(.white)
-                                .clipShape(Capsule())
-                        }
-                        .padding(.bottom, 40)
-                    }
-                } else {
-                    List {
-                        // Self person section
-                        Section {
-                            ForEach(people.filter { $0.isSelf == true }) { person in
-                                if isEditMode {
-                                    PersonEditRowView(
-                                        person: person,
-                                        onEdit: {
-                                            personToEdit = person
-                                        },
-                                        onDelete: {
-                                            // Self person can't be deleted
-                                        }
-                                    )
-                                } else {
-                                    NavigationLink(destination: ConversationView(person: person)) {
-                                        PersonRowView(person: person)
-                                    }
-                                }
-                            }
-                        }
-
-                        // Team section
-                        Section {
-                            ForEach(people.filter { $0.isSelf != true }) { person in
-                                if isEditMode {
-                                    PersonEditRowView(
-                                        person: person,
-                                        onEdit: {
-                                            personToEdit = person
-                                        },
-                                        onDelete: {
-                                            personToDelete = person
-                                            showingDeleteConfirmation = true
-                                        }
-                                    )
-                                } else {
-                                    NavigationLink(destination: ConversationView(person: person)) {
-                                        PersonRowView(person: person)
-                                    }
-                                }
-                            }
-                        } header: {
-                            Text("My People")
-                        }
-                    }
+            mainContent
+                .navigationTitle("People")
+                .navigationDestination(item: $navigateToNewPerson) { person in
+                    ConversationView(person: person)
                 }
-            }
-            .navigationTitle("People")
-            .navigationDestination(item: $navigateToNewPerson) { person in
-                ConversationView(person: person)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    // Environment indicator
-                    Button(action: {
-                        showEnvironmentPicker.toggle()
-                    }) {
-                        HStack(spacing: 3) {
-                            Image(systemName: environmentManager.currentEnvironment.icon)
-                                .font(.caption2)
-                            Text(environmentManager.currentEnvironment == .production ? "Prod" : "Dev")
-                                .font(.caption2)
-                                .fontWeight(.medium)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(
-                            Capsule()
-                                .fill(environmentManager.currentEnvironment == .production ?
-                                     Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                        )
-                        .foregroundColor(environmentManager.currentEnvironment == .production ?
-                                       .green : .orange)
-                    }
+                .task {
+                    await loadPeople()
                 }
-
-                ToolbarItem(placement: .primaryAction) {
-                    HStack {
-                        if !isEditMode {
-                            Button(action: { showingAddPerson = true }) {
-                                Image(systemName: "plus")
-                            }
-                        }
-
-                        if isEditMode {
-                            Button("Done") {
-                                isEditMode = false
-                            }
-                        } else {
-                            Menu {
-                                Button("Edit List") {
-                                    isEditMode = true
-                                }
-
-                                Divider()
-
-                                Button("Delete Account", role: .destructive) {
-                                    showingDeleteAccountConfirmation = true
-                                }
-
-                                Button("Sign Out") {
-                                    Task {
-                                        try? await supabase.signOut()
-                                    }
-                                }
-                            } label: {
-                                Image(systemName: "ellipsis.circle")
-                            }
-                        }
-                    }
-                }
-            }
-            .task {
-                await loadPeople()
-            }
             .sheet(isPresented: $showingAddPerson) {
                 AddPersonView(
                     isPresented: $showingAddPerson,
@@ -230,7 +100,148 @@ struct PeopleListView: View {
             }
         }
     }
-    
+
+    @ViewBuilder
+    private var mainContent: some View {
+        if isLoading {
+            ProgressView("Loading people...")
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if people.isEmpty {
+            emptyStateView
+        } else {
+            peopleListView
+        }
+    }
+
+    private var emptyStateView: some View {
+        ContentUnavailableView(
+            "No People Yet",
+            systemImage: "person.3",
+            description: Text("Start adding people you work with to track your conversations")
+        )
+        .overlay(alignment: .bottom) {
+            Button(action: { showingAddPerson = true }) {
+                Label("Add Your First Person", systemImage: "plus.circle.fill")
+                    .font(.headline)
+                    .padding()
+                    .background(Color.blue)
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
+            .padding(.bottom, 40)
+        }
+    }
+
+    private var peopleListView: some View {
+        List {
+            // Self person section
+            Section {
+                ForEach(people.filter { $0.isSelf == true }) { person in
+                    personRow(for: person)
+                }
+            }
+
+            // Team section
+            Section {
+                ForEach(people.filter { $0.isSelf != true }) { person in
+                    personRow(for: person)
+                }
+            } header: {
+                Text("My People")
+            }
+
+            // Bottom glass buttons section
+            Section {
+                HStack(spacing: 12) {
+                    // Left: Add Person button
+                    Button(action: { showingAddPerson = true }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title3)
+                            Text("Add Person")
+                                .fontWeight(.semibold)
+                        }
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(.blue)
+                        )
+                    }
+                    .buttonStyle(.plain)
+
+                    // Right: Settings menu button
+                    Menu {
+                        if !people.isEmpty {
+                            Button(action: {
+                                isEditMode.toggle()
+                            }) {
+                                Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
+                            }
+                            Divider()
+                        }
+
+                        if environmentManager.currentEnvironment == .local {
+                            Button(action: { showEnvironmentPicker = true }) {
+                                Label("Switch Environment", systemImage: "network")
+                            }
+                        }
+
+                        Button(role: .destructive, action: {
+                            showingDeleteAccountConfirmation = true
+                        }) {
+                            Label("Delete Account", systemImage: "trash")
+                        }
+
+                        Button(action: {
+                            Task {
+                                try? await supabase.auth.signOut()
+                            }
+                        }) {
+                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                    } label: {
+                        Image(systemName: "gearshape")
+                            .font(.title2)
+                            .foregroundStyle(.blue)
+                            .frame(width: 54, height: 54)
+                            .background(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .fill(Color(.systemGray5))
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
+                .listRowInsets(EdgeInsets())
+                .listRowBackground(Color.clear)
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    @ViewBuilder
+    private func personRow(for person: Person) -> some View {
+        if isEditMode {
+            PersonEditRowView(
+                person: person,
+                onEdit: {
+                    personToEdit = person
+                },
+                onDelete: {
+                    if person.isSelf != true {
+                        personToDelete = person
+                        showingDeleteConfirmation = true
+                    }
+                }
+            )
+        } else {
+            NavigationLink(destination: ConversationView(person: person)) {
+                PersonRowView(person: person)
+            }
+        }
+    }
+
     private func loadPeople() async {
         isLoading = true
         do {

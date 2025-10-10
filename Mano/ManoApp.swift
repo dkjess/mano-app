@@ -13,13 +13,33 @@ struct ManoApp: App {
     init() {
         print("🚀 ManoApp initializing...")
     }
-    
+
     var body: some Scene {
         WindowGroup {
             RootView()
                 .onAppear {
                     print("🎯 RootView appeared")
                 }
+                .onOpenURL { url in
+                    print("🔗 Received custom URL scheme: \(url)")
+                    handleLink(url)
+                }
+                .onContinueUserActivity(NSUserActivityTypeBrowsingWeb) { userActivity in
+                    guard let url = userActivity.webpageURL else { return }
+                    print("🌐 Received universal link: \(url)")
+                    handleLink(url)
+                }
+        }
+    }
+
+    private func handleLink(_ url: URL) {
+        Task {
+            do {
+                try await SupabaseManager.shared.auth.handleDeepLink(url: url)
+                print("✅ Successfully handled link")
+            } catch {
+                print("❌ Failed to handle link: \(error)")
+            }
         }
     }
 }
@@ -28,6 +48,7 @@ struct RootView: View {
     @ObservedObject private var supabase = SupabaseManager.shared
     @State private var needsFoundationProfile = false
     @State private var isCheckingProfile = true
+    @State private var showEnvironmentPicker = false
 
     init() {
         print("🔧 RootView initializing...")
@@ -35,7 +56,7 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
+        ZStack {
             if !supabase.isAuthenticated {
                 WelcomeView()
             } else if isCheckingProfile {
@@ -46,7 +67,11 @@ struct RootView: View {
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                #if os(iOS)
                 .background(Color(.systemBackground))
+                #else
+                .background(Color(NSColor.windowBackgroundColor))
+                #endif
             } else if needsFoundationProfile {
                 OnboardingFlowView()
             } else {
@@ -79,6 +104,12 @@ struct RootView: View {
             if supabase.isAuthenticated {
                 await checkProfileStatus()
             }
+        }
+        .sheet(isPresented: $showEnvironmentPicker) {
+            EnvironmentPickerView()
+        }
+        .onShake {
+            showEnvironmentPicker = true
         }
     }
 

@@ -50,7 +50,8 @@ class SupabaseAuthManager: ObservableObject {
     
     // MARK: - Authentication Methods
 
-    func signIn(email: String, password: String) async throws {
+    func signInWithMagicLink(email: String) async throws {
+        print("📧 Sending magic link to: \(email)")
         isLoading = true
         errorMessage = ""
 
@@ -59,52 +60,39 @@ class SupabaseAuthManager: ObservableObject {
         }
 
         do {
-            try await client.auth.signIn(email: email, password: password)
-        } catch {
-            errorMessage = error.localizedDescription
-            throw error
-        }
-    }
+            // Dev auto-login: If using Local environment and dev@mano.local, sign in directly with password
+            let currentEnv = BackendEnvironmentManager.shared.currentEnvironment
+            if email == "dev@mano.local" && (currentEnv == .local || currentEnv == .localhost) {
+                print("🔧 Dev mode: Auto-signing in with password for Local environment")
+                try await client.auth.signIn(email: email, password: "dev123456")
+                print("✅ Dev user signed in successfully")
+                return
+            }
 
-    func signUp(email: String, password: String) async throws {
-        isLoading = true
-        errorMessage = ""
+            // Redirect dev@mano.local to real email for Production magic links
+            let actualEmail = email == "dev@mano.local" ? "dkjess+manodev@gmail.com" : email
 
-        defer {
-            isLoading = false
-        }
+            if email != actualEmail {
+                print("🔧 Dev mode: Redirecting \(email) → \(actualEmail)")
+            }
 
-        do {
-            try await client.auth.signUp(email: email, password: password)
-        } catch {
-            errorMessage = error.localizedDescription
-            throw error
-        }
-    }
-
-    func signInWithApple() async throws {
-        isLoading = true
-        errorMessage = ""
-
-        defer {
-            isLoading = false
-        }
-
-        do {
-            try await client.auth.signInWithIdToken(
-                credentials: .init(
-                    provider: .apple,
-                    idToken: "", // Will be filled by Apple Sign In flow
-                    nonce: ""
-                )
+            // Use shouldCreateUser: true to auto-create account if needed
+            // Using HTTPS universal link instead of custom URL scheme
+            try await client.auth.signInWithOTP(
+                email: actualEmail,
+                redirectTo: URL(string: "https://supermano.ai/login-callback"),
+                shouldCreateUser: true
             )
+            print("✅ Magic link sent successfully to \(actualEmail)")
         } catch {
+            print("❌ Failed to send magic link: \(error)")
             errorMessage = error.localizedDescription
             throw error
         }
     }
 
-    func signInWithGoogle() async throws {
+    func handleDeepLink(url: URL) async throws {
+        print("🔗 Handling deep link: \(url)")
         isLoading = true
         errorMessage = ""
 
@@ -113,10 +101,11 @@ class SupabaseAuthManager: ObservableObject {
         }
 
         do {
-            // This will need to be implemented with Google Sign-In SDK
-            // For now, placeholder implementation
-            throw NSError(domain: "AuthError", code: 0, userInfo: [NSLocalizedDescriptionKey: "Google Sign-In not yet implemented"])
+            // Supabase SDK handles the session extraction from URL
+            try await client.auth.session(from: url)
+            print("✅ Session created from magic link")
         } catch {
+            print("❌ Failed to handle deep link: \(error)")
             errorMessage = error.localizedDescription
             throw error
         }

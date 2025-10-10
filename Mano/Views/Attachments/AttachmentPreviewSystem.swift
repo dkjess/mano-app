@@ -88,8 +88,10 @@ struct AttachmentPreviewContainer: View {
         }
         
         // Haptic feedback
+        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
         impactFeedback.impactOccurred()
+        #endif
     }
     
     private func handleDrop(_ droppedAttachments: [Attachment], target: Attachment) -> Bool {
@@ -105,8 +107,10 @@ struct AttachmentPreviewContainer: View {
         }
         
         // Haptic feedback for reorder
+        #if os(iOS)
         let impactFeedback = UIImpactFeedbackGenerator(style: .light)
         impactFeedback.impactOccurred()
+        #endif
         
         return true
     }
@@ -145,6 +149,7 @@ struct EnhancedAttachmentPreview: View {
         ZStack {
             // Main preview content
             Group {
+                #if os(iOS)
                 if let thumbnail = attachment.thumbnail {
                     Image(uiImage: thumbnail)
                         .resizable()
@@ -161,6 +166,10 @@ struct EnhancedAttachmentPreview: View {
                     // Fallback icon view
                     AttachmentIconView(attachment: attachment, size: size.dimensions)
                 }
+                #else
+                // macOS - no thumbnail support, show icon
+                AttachmentIconView(attachment: attachment, size: size.dimensions)
+                #endif
             }
             .clipShape(RoundedRectangle(cornerRadius: 12))
             .overlay(
@@ -244,8 +253,10 @@ struct EnhancedAttachmentPreview: View {
             onPressingChanged: { pressing in
                 isPressed = pressing
                 if pressing {
+                    #if os(iOS)
                     let impactFeedback = UIImpactFeedbackGenerator(style: .light)
                     impactFeedback.impactOccurred()
+                    #endif
                 }
             }
         )
@@ -342,6 +353,7 @@ struct AttachmentDragPreview: View {
     
     var body: some View {
         VStack(spacing: 4) {
+            #if os(iOS)
             if let thumbnail = attachment.thumbnail {
                 Image(uiImage: thumbnail)
                     .resizable()
@@ -351,6 +363,10 @@ struct AttachmentDragPreview: View {
             } else {
                 AttachmentIconView(attachment: attachment, size: 60)
             }
+            #else
+            // macOS - no thumbnail support, show icon
+            AttachmentIconView(attachment: attachment, size: 60)
+            #endif
             
             Text(attachment.originalName)
                 .font(.caption2)
@@ -376,6 +392,7 @@ struct AttachmentDetailView: View {
                 VStack(spacing: 20) {
                     // Large preview
                     Group {
+                        #if os(iOS)
                         if let image = attachment.image {
                             Image(uiImage: image)
                                 .resizable()
@@ -384,6 +401,10 @@ struct AttachmentDetailView: View {
                         } else {
                             AttachmentIconView(attachment: attachment, size: 120)
                         }
+                        #else
+                        // macOS - no UIImage support, show icon
+                        AttachmentIconView(attachment: attachment, size: 120)
+                        #endif
                     }
                     .clipShape(RoundedRectangle(cornerRadius: 16))
                     .shadow(radius: 8)
@@ -396,13 +417,23 @@ struct AttachmentDetailView: View {
                 .padding()
             }
             .navigationTitle(attachment.originalName)
+            #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
+            #endif
             .toolbar {
+                #if os(iOS)
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Done") {
                         dismiss()
                     }
                 }
+                #else
+                ToolbarItem(placement: .automatic) {
+                    Button("Done") {
+                        dismiss()
+                    }
+                }
+                #endif
             }
         }
     }

@@ -9,10 +9,10 @@ import SwiftUI
 
 struct OnboardingFlowView: View {
     @State private var currentStep = 0
-    @State private var preferredName = ""
     @State private var callName = ""
     @State private var jobRole = ""
-    @State private var company = ""
+    @State private var experienceLevel = ""
+    @State private var tonePreference = ""
     @State private var isLoading = false
     @State private var showError = false
     @State private var showLogoutConfirmation = false
@@ -20,7 +20,7 @@ struct OnboardingFlowView: View {
     @ObservedObject private var profileManager = SupabaseManager.shared.profile
     @ObservedObject private var authManager = SupabaseManager.shared.auth
 
-    private let totalSteps = 4
+    private let totalSteps = 3
 
     var body: some View {
         NavigationStack {
@@ -49,18 +49,16 @@ struct OnboardingFlowView: View {
                 Group {
                     switch currentStep {
                     case 0:
-                        PreferredNameStep(name: $preferredName)
+                        NameStep(callName: $callName)
+                            .padding(.horizontal, 24)
                     case 1:
-                        CallNameStep(callName: $callName)
+                        RoleExperienceStep(jobRole: $jobRole, experienceLevel: $experienceLevel, callName: $callName)
                     case 2:
-                        JobRoleStep(jobRole: $jobRole)
-                    case 3:
-                        CompanyStep(company: $company)
+                        TonePreferenceStep(tonePreference: $tonePreference)
                     default:
                         EmptyView()
                     }
                 }
-                .padding(.horizontal, 24)
 
                 Spacer()
 
@@ -74,7 +72,11 @@ struct OnboardingFlowView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .frame(height: 50)
+                        #if os(iOS)
                         .background(Color(.systemGray5))
+                        #else
+                        .background(Color(NSColor.controlBackgroundColor))
+                        #endif
                         .foregroundColor(.primary)
                         .cornerRadius(12)
                     }
@@ -103,7 +105,11 @@ struct OnboardingFlowView: View {
                 .padding(.horizontal, 24)
                 .padding(.bottom, 32)
             }
+            #if os(iOS)
             .navigationBarHidden(true)
+            #else
+            .toolbar(.hidden, for: .windowToolbar)
+            #endif
             .alert("Error", isPresented: $showError) {
                 Button("OK") { }
             } message: {
@@ -129,10 +135,9 @@ struct OnboardingFlowView: View {
 
     private var canProceed: Bool {
         switch currentStep {
-        case 0: return !preferredName.isEmpty
-        case 1: return !callName.isEmpty
-        case 2: return !jobRole.isEmpty
-        case 3: return true // Company is optional
+        case 0: return !callName.isEmpty
+        case 1: return !jobRole.isEmpty && !experienceLevel.isEmpty
+        case 2: return !tonePreference.isEmpty
         default: return false
         }
     }
@@ -151,21 +156,24 @@ struct OnboardingFlowView: View {
     private func saveProfileAndComplete() {
         print("🔵 [OnboardingFlow] Starting saveProfileAndComplete")
         print("🔵 [OnboardingFlow] Data to save:")
-        print("   - preferredName: \(preferredName)")
         print("   - callName: \(callName)")
         print("   - jobRole: \(jobRole)")
-        print("   - company: \(company)")
+        print("   - experienceLevel: \(experienceLevel)")
+        print("   - tonePreference: \(tonePreference)")
 
         isLoading = true
 
         Task {
             do {
                 print("🔵 [OnboardingFlow] Calling updateFoundationProfile...")
+
                 try await profileManager.updateFoundationProfile(
-                    preferredName: preferredName,
                     callName: callName,
                     jobRole: jobRole,
-                    company: company.isEmpty ? nil : company
+                    experienceLevel: experienceLevel,
+                    communicationStyle: "", // Empty string - backend will skip if empty
+                    tonePreference: tonePreference,
+                    onboardingStep: 3
                 )
 
                 print("✅ [OnboardingFlow] Profile update successful")
@@ -188,66 +196,71 @@ struct OnboardingFlowView: View {
 
 // MARK: - Individual Step Views
 
-struct PreferredNameStep: View {
-    @Binding var name: String
-    @FocusState private var isTextFieldFocused: Bool
-
+// Step 0: Welcome
+struct WelcomeStep: View {
     var body: some View {
-        OnboardingStepContainer(
-            title: "What's your full name?",
-            subtitle: "This will be used for your profile and formal settings"
-        ) {
-            VStack(spacing: 20) {
-                TextField("Enter your full name", text: $name)
-                    .font(.title2)
-                    .textFieldStyle(.plain)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 20)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .focused($isTextFieldFocused)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
+        VStack(spacing: 32) {
+            Spacer()
 
-                Text("This helps maintain professionalism in shared contexts")
-                    .font(.caption)
+            VStack(spacing: 20) {
+                Text("👋")
+                    .font(.system(size: 80))
+
+                Text("Welcome to Mano")
+                    .font(.largeTitle)
+                    .fontWeight(.bold)
+
+                Text("Your thinking partner for managing people and teams.")
+                    .font(.body)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
+
+                Text("Mano helps you work through challenges, prepare for conversations, and become the manager you want to be.")
+                    .font(.body)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 8)
+
+                Text("Let's get to know you—this will take 2 minutes.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, 16)
             }
-        }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                isTextFieldFocused = true
-            }
+            .padding(.horizontal)
+
+            Spacer()
         }
     }
 }
 
-struct CallNameStep: View {
+// Step 1: Name
+struct NameStep: View {
     @Binding var callName: String
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
         OnboardingStepContainer(
-            title: "What should Mano call you?",
-            subtitle: "Your preferred name - could be a nickname, first name, or however you like to be addressed"
+            title: "What should I call you?",
+            subtitle: "This is how I'll address you in our conversations. You can always change this later in settings."
         ) {
             VStack(spacing: 20) {
-                TextField("Your preferred name", text: $callName)
+                TextField("Your name", text: $callName)
                     .font(.title2)
                     .textFieldStyle(.plain)
                     .padding(.vertical, 16)
                     .padding(.horizontal, 20)
+                    #if os(iOS)
                     .background(Color(.systemGray6))
+                    #else
+                    .background(Color(NSColor.controlBackgroundColor))
+                    #endif
                     .cornerRadius(12)
                     .focused($isTextFieldFocused)
+                    #if os(iOS)
                     .textInputAutocapitalization(.words)
+                    #endif
                     .autocorrectionDisabled()
-
-                Text("Mano will use this name when talking with you")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
             }
         }
         .onAppear {
@@ -258,47 +271,79 @@ struct CallNameStep: View {
     }
 }
 
-struct JobRoleStep: View {
+// Step 2: Role + Experience
+struct RoleExperienceStep: View {
     @Binding var jobRole: String
+    @Binding var experienceLevel: String
+    @Binding var callName: String
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
-        OnboardingStepContainer(
-            title: "What's your role?",
-            subtitle: "Your job title or position - this helps Mano provide relevant management advice"
-        ) {
-            VStack(spacing: 20) {
-                TextField("Your job title", text: $jobRole)
-                    .font(.title2)
-                    .textFieldStyle(.plain)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 20)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .focused($isTextFieldFocused)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 12) {
+                    Text(callName.isEmpty ? "Tell me about your role" : "Okay \(callName), tell me about your role")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 32)
 
-                // Quick suggestions
-                VStack(spacing: 8) {
-                    Text("Common roles:")
-                        .font(.caption)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Job Title")
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
 
+                    TextField("e.g., Engineering Manager", text: $jobRole)
+                        .font(.body)
+                        .textFieldStyle(.plain)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 20)
+                        #if os(iOS)
+                        .background(Color(.systemGray6))
+                        #else
+                        .background(Color(NSColor.controlBackgroundColor))
+                        #endif
+                        .cornerRadius(12)
+                        .focused($isTextFieldFocused)
+                        #if os(iOS)
+                        .textInputAutocapitalization(.words)
+                        #endif
+                        .autocorrectionDisabled()
+
+                    // Quick picks
                     HStack(spacing: 8) {
-                        ForEach(["Manager", "Director", "Team Lead", "VP"], id: \.self) { role in
+                        ForEach(["Engineering Manager", "Team Lead", "Director", "VP"], id: \.self) { role in
                             Button(role) {
                                 jobRole = role
                             }
                             .font(.caption)
                             .padding(.horizontal, 12)
                             .padding(.vertical, 6)
+                            #if os(iOS)
                             .background(Color(.systemGray5))
+                            #else
+                            .background(Color(NSColor.controlBackgroundColor))
+                            #endif
+                            .foregroundColor(.primary)
                             .cornerRadius(8)
                         }
                     }
                 }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("How long have you been managing people?")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 8) {
+                        ExperienceButton(title: "New to management (< 1 year)", value: "new", selectedValue: $experienceLevel)
+                        ExperienceButton(title: "Getting experienced (1-5 years)", value: "experienced", selectedValue: $experienceLevel)
+                        ExperienceButton(title: "Veteran manager (5+ years)", value: "veteran", selectedValue: $experienceLevel)
+                    }
+                }
             }
+            .padding(.horizontal, 24)
         }
         .onAppear {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
@@ -308,38 +353,238 @@ struct JobRoleStep: View {
     }
 }
 
-struct CompanyStep: View {
-    @Binding var company: String
-    @FocusState private var isTextFieldFocused: Bool
+struct ExperienceButton: View {
+    let title: String
+    let value: String
+    @Binding var selectedValue: String
 
     var body: some View {
-        OnboardingStepContainer(
-            title: "Where do you work?",
-            subtitle: "Your company or organization (optional - you can skip this)"
-        ) {
-            VStack(spacing: 20) {
-                TextField("Company name", text: $company)
-                    .font(.title2)
-                    .textFieldStyle(.plain)
-                    .padding(.vertical, 16)
-                    .padding(.horizontal, 20)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                    .focused($isTextFieldFocused)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-
-                Button("Skip this step") {
-                    company = ""
-                }
-                .font(.caption)
-                .foregroundColor(.accentColor)
+        Button(action: {
+            selectedValue = value
+        }) {
+            HStack {
+                Image(systemName: selectedValue == value ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(selectedValue == value ? .accentColor : .secondary)
+                Text(title)
+                    .foregroundColor(.primary)
+                Spacer()
             }
+            .padding(.vertical, 12)
+            .padding(.horizontal, 16)
+            #if os(iOS)
+            .background(selectedValue == value ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+            #else
+            .background(selectedValue == value ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+            #endif
+            .cornerRadius(12)
         }
-        .onAppear {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                isTextFieldFocused = true
+    }
+}
+
+// Step 2: Communication Style
+struct CommunicationStyleStep: View {
+    @Binding var communicationStyle: String
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 12) {
+                    Text("How do you prefer to work through challenges?")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 32)
+
+                VStack(spacing: 12) {
+                    StyleCard(
+                        icon: "💭",
+                        title: "Think out loud",
+                        description: "I process by talking through ideas and exploring possibilities",
+                        value: "think_aloud",
+                        selectedValue: $communicationStyle
+                    )
+
+                    StyleCard(
+                        icon: "📝",
+                        title: "Write it out",
+                        description: "I need to see things written down to organize my thoughts",
+                        value: "write_it_out",
+                        selectedValue: $communicationStyle
+                    )
+
+                    StyleCard(
+                        icon: "🎯",
+                        title: "Cut to the chase",
+                        description: "Give me the key insights and action items—let's move fast",
+                        value: "action_oriented",
+                        selectedValue: $communicationStyle
+                    )
+
+                    StyleCard(
+                        icon: "🔄",
+                        title: "Explore options",
+                        description: "I like considering multiple angles before deciding on a path",
+                        value: "explore_options",
+                        selectedValue: $communicationStyle
+                    )
+                }
             }
+            .padding(.horizontal, 24)
+        }
+    }
+}
+
+struct StyleCard: View {
+    let icon: String
+    let title: String
+    let description: String
+    let value: String
+    @Binding var selectedValue: String
+
+    var isSelected: Bool {
+        selectedValue == value
+    }
+
+    var body: some View {
+        Button(action: {
+            selectedValue = value
+        }) {
+            HStack(alignment: .top, spacing: 12) {
+                Text(icon)
+                    .font(.title)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.leading)
+                }
+
+                Spacer()
+
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .accentColor : .secondary)
+            }
+            .padding(16)
+            #if os(iOS)
+            .background(isSelected ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+            #else
+            .background(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+            #endif
+            .cornerRadius(12)
+        }
+    }
+}
+
+// Step 3: Tone Preference
+struct TonePreferenceStep: View {
+    @Binding var tonePreference: String
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 24) {
+                VStack(spacing: 12) {
+                    Text("Pick your favorite response")
+                        .font(.largeTitle)
+                        .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 32)
+
+                VStack(alignment: .trailing, spacing: 12) {
+                    HStack {
+                        Spacer()
+                        Text("I'm struggling with giving tough feedback to a team member.")
+                            .font(.body)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.leading)
+                            .padding(16)
+                            .background(Color.accentColor)
+                            .cornerRadius(20)
+                            #if os(iOS)
+                            .frame(maxWidth: UIScreen.main.bounds.width * 0.8, alignment: .trailing)
+                            #else
+                            .frame(maxWidth: 600, alignment: .trailing)
+                            #endif
+                    }
+                }
+
+                VStack(spacing: 12) {
+                    ToneCard(
+                        response: "Tough feedback isn't optional when you're a manager. What's stopping you from being clear about what needs to change?",
+                        value: "direct",
+                        selectedValue: $tonePreference
+                    )
+
+                    ToneCard(
+                        response: "That's really common—giving critical feedback feels vulnerable! What would make it easier for you to have that conversation?",
+                        value: "warm",
+                        selectedValue: $tonePreference
+                    )
+
+                    ToneCard(
+                        response: "Oof, yeah, nobody loves that part! What's the feedback you're sitting on right now?",
+                        value: "conversational",
+                        selectedValue: $tonePreference
+                    )
+
+                    ToneCard(
+                        response: "Let's break this down. What specific behavior needs to change, and what outcome are you aiming for?",
+                        value: "analytical",
+                        selectedValue: $tonePreference
+                    )
+                }
+            }
+            .padding(.horizontal, 24)
+        }
+    }
+}
+
+struct ToneCard: View {
+    let response: String
+    let value: String
+    @Binding var selectedValue: String
+
+    var isSelected: Bool {
+        selectedValue == value
+    }
+
+    var body: some View {
+        HStack {
+            Button(action: {
+                selectedValue = value
+            }) {
+                HStack(alignment: .top, spacing: 12) {
+                    Text(response)
+                        .font(.body)
+                        .foregroundColor(.primary)
+                        .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                        .foregroundColor(isSelected ? .accentColor : .secondary)
+                        .font(.title3)
+                }
+                .padding(16)
+                #if os(iOS)
+                .background(isSelected ? Color.accentColor.opacity(0.1) : Color(.systemGray6))
+                #else
+                .background(isSelected ? Color.accentColor.opacity(0.1) : Color(NSColor.controlBackgroundColor))
+                #endif
+                .cornerRadius(20)
+            }
+            #if os(iOS)
+            .frame(maxWidth: UIScreen.main.bounds.width * 0.8, alignment: .leading)
+            #else
+            .frame(maxWidth: 600, alignment: .leading)
+            #endif
+
+            Spacer()
         }
     }
 }

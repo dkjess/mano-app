@@ -1,0 +1,15 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "DZJRL7SVU3.ai.supermano.Mano",
+        "paths": [
+          "/auth/*",
+          "/login-callback",
+          "/magic-link"
+        ]
+      }
+    ]
+  }
+}

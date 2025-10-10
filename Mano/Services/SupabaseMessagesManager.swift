@@ -12,84 +12,96 @@ import PostgREST
 class SupabaseMessagesManager {
     private let client: SupabaseClient
     private let authManager: SupabaseAuthManager
-    
+    private let cacheManager = CacheManager.shared
+
     init(client: SupabaseClient, authManager: SupabaseAuthManager) {
         self.client = client
         self.authManager = authManager
     }
-    
+
     func fetchMessages(for personId: UUID) async throws -> [Message] {
         print("💬 Fetching messages for person: \(personId)")
 
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            // Return cached data if offline
+            let cached = await cacheManager.getCachedMessages(for: personId)
+            if !cached.isEmpty {
+                print("📦 Returning \(cached.count) cached messages (offline)")
+                return cached
+            }
+            throw MessagingError.notAuthenticated
         }
 
         print("🔍 User ID: \(userId.uuidString)")
         print("🔍 Person ID: \(personId.uuidString)")
 
-        // First, get the active conversation for this person
-        let conversationResponse = try await client
-            .from("conversations")
-            .select("id")
-            .eq("person_id", value: personId.uuidString.lowercased())
-            .eq("is_active", value: true)
-            .order("updated_at", ascending: false)
-            .limit(1)
-            .execute()
+        do {
+            // First, get the active conversation for this person
+            let conversationResponse = try await client
+                .from("conversations")
+                .select("id")
+                .eq("person_id", value: personId.uuidString.lowercased())
+                .eq("is_active", value: true)
+                .order("updated_at", ascending: false)
+                .limit(1)
+                .execute()
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
 
-        // If we have an active conversation, fetch messages from it
-        if !conversationResponse.data.isEmpty {
-            if let conversationData = try? JSONSerialization.jsonObject(with: conversationResponse.data) as? [[String: Any]],
-               let firstConversation = conversationData.first,
-               let conversationIdString = firstConversation["id"] as? String {
+            var messages: [Message] = []
 
-                print("🔍 Found active conversation: \(conversationIdString)")
+            // If we have an active conversation, fetch messages from it
+            if !conversationResponse.data.isEmpty {
+                if let conversationData = try? JSONSerialization.jsonObject(with: conversationResponse.data) as? [[String: Any]],
+                   let firstConversation = conversationData.first,
+                   let conversationIdString = firstConversation["id"] as? String {
 
+                    print("🔍 Found active conversation: \(conversationIdString)")
+
+                    let response = try await client
+                        .from("messages")
+                        .select()
+                        .eq("conversation_id", value: conversationIdString)
+                        .order("created_at", ascending: true)
+                        .execute()
+
+                    print("📦 Raw response data length: \(response.data.count)")
+                    messages = try decoder.decode([Message].self, from: response.data)
+                    print("✅ Fetched \(messages.count) messages from active conversation")
+                }
+            }
+
+            // Fallback: fetch messages by person_id if no active conversation
+            if messages.isEmpty {
+                print("⚠️ No active conversation found, falling back to person-based query")
                 let response = try await client
                     .from("messages")
                     .select()
-                    .eq("conversation_id", value: conversationIdString)
+                    .eq("user_id", value: userId.uuidString.lowercased())
+                    .eq("person_id", value: personId.uuidString.lowercased())
                     .order("created_at", ascending: true)
                     .execute()
 
                 print("📦 Raw response data length: \(response.data.count)")
-
-                do {
-                    let messages = try decoder.decode([Message].self, from: response.data)
-                    print("✅ Fetched \(messages.count) messages from active conversation")
-                    return messages
-                } catch {
-                    print("❌ Decoding error: \(error)")
-                    print("📦 Raw data: \(String(data: response.data, encoding: .utf8) ?? "nil")")
-                    throw error
-                }
+                messages = try decoder.decode([Message].self, from: response.data)
+                print("✅ Fetched \(messages.count) messages via fallback")
             }
-        }
 
-        // Fallback: fetch messages by person_id for backward compatibility
-        print("⚠️ No active conversation found, falling back to person-based query")
-        let response = try await client
-            .from("messages")
-            .select()
-            .eq("user_id", value: userId.uuidString.lowercased())
-            .eq("person_id", value: personId.uuidString.lowercased())
-            .order("created_at", ascending: true)
-            .execute()
+            // Cache the fetched messages
+            await cacheManager.cacheMessages(messages, for: personId)
 
-        print("📦 Raw response data length: \(response.data.count)")
-
-        do {
-            let messages = try decoder.decode([Message].self, from: response.data)
-            print("✅ Fetched \(messages.count) messages via fallback")
             return messages
         } catch {
+            // If network fails, return cached data
+            print("⚠️ Network error, falling back to cache: \(error)")
+            let cached = await cacheManager.getCachedMessages(for: personId)
+            if !cached.isEmpty {
+                print("📦 Returning \(cached.count) cached messages (offline fallback)")
+                return cached
+            }
             print("❌ Decoding error: \(error)")
-            print("📦 Raw data: \(String(data: response.data, encoding: .utf8) ?? "nil")")
             throw error
         }
     }
@@ -99,7 +111,7 @@ class SupabaseMessagesManager {
         
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw MessagingError.notAuthenticated
         }
         
         // First, insert the user's message
@@ -126,7 +138,7 @@ class SupabaseMessagesManager {
         
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
-            throw NSError(domain: "SupabaseMessagesManager", code: 401, userInfo: [NSLocalizedDescriptionKey: "User not authenticated"])
+            throw MessagingError.notAuthenticated
         }
         
         // First, insert the user's message
@@ -152,8 +164,19 @@ class SupabaseMessagesManager {
         print("🌊 Starting streaming chat function")
         print("📝 Message content: \(content)")
         print("👤 Person ID: \(personId.uuidString.lowercased())")
-        
-        let session = try await client.auth.session
+
+        // Use a more robust session approach to avoid refresh race conditions
+        let session: Session
+        do {
+            session = try await client.auth.session
+            print("✅ Session obtained successfully")
+        } catch {
+            print("❌ Failed to get session: \(error)")
+            // Try one retry after a brief delay in case of transient auth issues
+            try await Task.sleep(nanoseconds: Timeouts.sessionRetry)
+            session = try await client.auth.session
+            print("✅ Session obtained on retry")
+        }
         
         // Request streaming response from backend
         let requestBody: [String: Any] = [
@@ -175,21 +198,32 @@ class SupabaseMessagesManager {
         request.httpBody = jsonData
         
         print("🌐 Starting streaming request to: \(supabaseURL)/functions/v1/chat")
-        
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "SupabaseMessagesManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+        print("🔑 Using token ending in: ...\(String(session.accessToken.suffix(8)))")
+
+        let (bytes, response): (URLSession.AsyncBytes, URLResponse)
+        do {
+            (bytes, response) = try await URLSession.shared.bytes(for: request)
+            print("✅ HTTP request initiated successfully")
+        } catch {
+            print("❌ HTTP request failed: \(error)")
+            throw error
         }
-        
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            print("❌ Invalid HTTP response type")
+            throw MessagingError.invalidResponse
+        }
+
+        print("📊 HTTP Response Status: \(httpResponse.statusCode)")
+
         if httpResponse.statusCode != 200 {
             var errorData = Data()
             for try await byte in bytes {
                 errorData.append(byte)
             }
             let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            print("❌ Chat API error: \(errorMessage)")
-            throw NSError(domain: "SupabaseMessagesManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            print("❌ Chat API error (Status \(httpResponse.statusCode)): \(errorMessage)")
+            throw MessagingError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
         }
         
         print("🌊 Starting to process SSE stream...")
@@ -265,7 +299,7 @@ class SupabaseMessagesManager {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw NSError(domain: "SupabaseMessagesManager", code: 0, userInfo: [NSLocalizedDescriptionKey: "Invalid response"])
+            throw MessagingError.invalidResponse
         }
         
         print("📡 Chat API response status: \(httpResponse.statusCode)")
@@ -274,7 +308,7 @@ class SupabaseMessagesManager {
             let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
             print("❌ Chat API error: \(errorMessage)")
             print("📄 Full response data: \(data)")
-            throw NSError(domain: "SupabaseMessagesManager", code: httpResponse.statusCode, userInfo: [NSLocalizedDescriptionKey: errorMessage])
+            throw MessagingError.serverError(statusCode: httpResponse.statusCode, message: errorMessage)
         }
         
         print("✅ AI response received successfully")

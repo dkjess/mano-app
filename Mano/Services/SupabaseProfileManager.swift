@@ -25,16 +25,20 @@ final class SupabaseProfileManager: ObservableObject {
     // MARK: - Foundation Profile
 
     func updateFoundationProfile(
-        preferredName: String,
         callName: String,
         jobRole: String,
-        company: String?
+        experienceLevel: String,
+        communicationStyle: String,
+        tonePreference: String,
+        onboardingStep: Int
     ) async throws {
         print("🟣 [ProfileManager] updateFoundationProfile called")
-        print("   - preferredName: \(preferredName)")
         print("   - callName: \(callName)")
         print("   - jobRole: \(jobRole)")
-        print("   - company: \(company ?? "nil")")
+        print("   - experienceLevel: \(experienceLevel)")
+        print("   - communicationStyle: \(communicationStyle)")
+        print("   - tonePreference: \(tonePreference)")
+        print("   - onboardingStep: \(onboardingStep)")
 
         isLoading = true
         errorMessage = ""
@@ -44,10 +48,12 @@ final class SupabaseProfileManager: ObservableObject {
             print("🟣 [ProfileManager] Got session for user: \(session.user.id)")
 
             let requestBody: [String: Any] = [
-                "preferred_name": preferredName,
                 "call_name": callName,
                 "job_role": jobRole,
-                "company": company ?? ""
+                "experience_level": experienceLevel,
+                "communication_style": communicationStyle,
+                "tone_preference": tonePreference,
+                "onboarding_step": onboardingStep
             ]
 
             let jsonData = try JSONSerialization.data(withJSONObject: requestBody)
@@ -105,5 +111,23 @@ final class SupabaseProfileManager: ObservableObject {
 
     func needsFoundationProfile() async -> Bool {
         return await profileService.needsFoundationProfile()
+    }
+
+    // Legacy function for EditSelfProfileView - can be removed once we update that view
+    func updateBasicProfile(
+        preferredName: String,
+        callName: String,
+        jobRole: String,
+        company: String?
+    ) async throws {
+        // For now, just use the new function with placeholder values for missing fields
+        try await updateFoundationProfile(
+            callName: callName,
+            jobRole: jobRole,
+            experienceLevel: "experienced", // Default placeholder
+            communicationStyle: "think_aloud", // Default placeholder
+            tonePreference: "warm", // Default placeholder
+            onboardingStep: 5 // Mark as complete
+        )
     }
 }
