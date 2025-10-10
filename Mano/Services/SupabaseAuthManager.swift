@@ -68,9 +68,10 @@ class SupabaseAuthManager: ObservableObject {
             }
 
             // Use shouldCreateUser: true to auto-create account if needed
+            // Using HTTPS universal link instead of custom URL scheme
             try await client.auth.signInWithOTP(
                 email: actualEmail,
-                redirectTo: URL(string: "mano://login-callback"),
+                redirectTo: URL(string: "https://supermano.ai/login-callback"),
                 shouldCreateUser: true
             )
             print("✅ Magic link sent successfully to \(actualEmail)")
