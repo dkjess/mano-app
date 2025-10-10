@@ -22,36 +22,58 @@ struct CreatePersonData: @preconcurrency Codable, Sendable {
 class SupabasePeopleManager {
     private let client: SupabaseClient
     private let authManager: SupabaseAuthManager
-    
+    private let cacheManager = CacheManager.shared
+
     init(client: SupabaseClient, authManager: SupabaseAuthManager) {
         self.client = client
         self.authManager = authManager
     }
-    
+
     func fetchPeople() async throws -> [Person] {
         print("🔍 Fetching people from Supabase...")
-        
+
         guard let userId = await authManager.user?.id else {
             print("❌ No user ID available")
+            // Return cached data if offline
+            let cached = await cacheManager.getCachedPeople()
+            if !cached.isEmpty {
+                print("📦 Returning \(cached.count) cached people (offline)")
+                return cached
+            }
             throw PeopleManagementError.notAuthenticated
         }
-        
+
         print("🔍 Current user: \(userId.uuidString)")
         print("🔍 Current user email: \(await authManager.user?.email ?? "nil")")
-        
-        let response = try await client
-            .from("people")
-            .select()
-            .eq("user_id", value: userId.uuidString.lowercased())
-            .order("name")
-            .execute()
-        
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        
-        let people = try decoder.decode([Person].self, from: response.data)
-        print("✅ Fetched \(people.count) people")
-        return people
+
+        do {
+            let response = try await client
+                .from("people")
+                .select()
+                .eq("user_id", value: userId.uuidString.lowercased())
+                .order("name")
+                .execute()
+
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+
+            let people = try decoder.decode([Person].self, from: response.data)
+            print("✅ Fetched \(people.count) people")
+
+            // Cache the fetched data
+            await cacheManager.cachePeople(people)
+
+            return people
+        } catch {
+            // If network fails, return cached data
+            print("⚠️ Network error, falling back to cache: \(error)")
+            let cached = await cacheManager.getCachedPeople()
+            if !cached.isEmpty {
+                print("📦 Returning \(cached.count) cached people (offline fallback)")
+                return cached
+            }
+            throw error
+        }
     }
     
     func createPerson(name: String, role: String?, relationshipType: String, startedWorkingTogether: Date? = nil) async throws -> Person {
