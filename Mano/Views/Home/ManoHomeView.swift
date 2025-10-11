@@ -8,6 +8,7 @@
 import SwiftUI
 import Combine
 
+@available(iOS 26.0, *)
 struct ManoHomeView: View {
     @State private var selectedPerson: Person?
     @State private var showingAddPerson = false
@@ -70,6 +71,7 @@ struct ManoHomeView: View {
     }
 }
 
+@available(iOS 26.0, *)
 #Preview {
     ManoHomeView()
 }

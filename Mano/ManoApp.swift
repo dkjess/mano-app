@@ -75,7 +75,13 @@ struct RootView: View {
             } else if needsFoundationProfile {
                 OnboardingFlowView()
             } else {
-                ManoHomeView()
+                if #available(iOS 26.0, *) {
+                    ManoHomeView()
+                } else {
+                    // Fallback for iOS < 26
+                    Text("iOS 26.0 or later required")
+                        .foregroundColor(.secondary)
+                }
             }
         }
         .onAppear {

@@ -1110,22 +1110,20 @@ async function handleStreamingChat({
               const textChunk = chunk.delta.text
               fullResponse += textChunk
 
-              // Send larger chunks for smoother streaming
-              // Strategy: Send word-by-word or in small phrases
-              const words = textChunk.split(/(\s+)/) // Keep whitespace
+              // Send small chunks immediately for smooth streaming
+              // Strategy: Send character-by-character or tiny chunks without delays
+              const chars = textChunk.split('')
               let buffer = ''
 
-              for (const word of words) {
-                buffer += word
+              for (const char of chars) {
+                buffer += char
 
-                // Send buffer when we hit a word boundary or reach reasonable size
-                if (buffer.length >= 5 || word.trim().length > 0) {
+                // Send buffer in small chunks (2-3 chars) for smooth flow
+                if (buffer.length >= 2) {
                   const sseData = `data: ${JSON.stringify({ content: buffer })}\n\n`
                   controller.enqueue(encoder.encode(sseData))
                   buffer = ''
-
-                  // Small delay between chunks for smooth perception (20-40ms)
-                  await new Promise(resolve => setTimeout(resolve, Math.random() * 20 + 20))
+                  // No artificial delays - let network handle pacing
                 }
               }
 
@@ -1140,26 +1138,25 @@ async function handleStreamingChat({
           // Performance checkpoint: Streaming complete
           performanceTracker?.checkpoint('anthropic_complete');
 
-          // Save the AI response in background (await to ensure it completes before stream ends)
-          console.log('🔄 Saving AI response in background...')
-          try {
-            await saveAIResponseInBackground(
-              fullResponse,
-              person_id,
-              user.id,
-              !!isTopicConversation,
-              actualTopicId,
-              userMessage,
-              managementContext,
-              supabase,
-              conversationIdForAI
-            )
+          // Save the AI response in background (non-blocking - fire and forget)
+          console.log('🔄 Saving AI response in background (non-blocking)...')
+          saveAIResponseInBackground(
+            fullResponse,
+            person_id,
+            user.id,
+            !!isTopicConversation,
+            actualTopicId,
+            userMessage,
+            managementContext,
+            supabase,
+            conversationIdForAI
+          ).then(() => {
             console.log('✅ AI response saved successfully')
-          } catch (error) {
+          }).catch((error) => {
             console.error('❌ Background AI response save failed:', error)
-          }
+          })
 
-          // Stream completion signal
+          // Stream completion signal (sent immediately, not waiting for DB)
           const completionData = `data: ${JSON.stringify({ done: true })}\n\n`
           controller.enqueue(encoder.encode(completionData))
 

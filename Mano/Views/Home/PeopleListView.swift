@@ -7,6 +7,7 @@
 
 import SwiftUI
 
+@available(iOS 26.0, *)
 struct PeopleListView: View {
     @State private var people: [Person] = []
     @State private var isLoading = true
@@ -150,28 +151,20 @@ struct PeopleListView: View {
                 Text("My People")
             }
 
-            // Bottom glass buttons section
+            // Bottom buttons section - outside the main sections
             Section {
-                HStack(spacing: 12) {
-                    // Left: Add Person button
+                HStack() {
+                    // Left: Add Person button (Primary action)
                     Button(action: { showingAddPerson = true }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.title3)
-                            Text("Add Person")
-                                .fontWeight(.semibold)
-                        }
-                        .foregroundStyle(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(.blue)
-                        )
+                        Label("Add Person", systemImage: "person.badge.plus")
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glassProminent)
+                    .tint(.blue)
+                    .controlSize(.large)
 
-                    // Right: Settings menu button
+                    Spacer()
+
+                    // Right: Settings menu button (Secondary action)
                     Menu {
                         if !people.isEmpty {
                             Button(action: {
@@ -203,18 +196,15 @@ struct PeopleListView: View {
                         }
                     } label: {
                         Image(systemName: "gearshape")
-                            .font(.title2)
-                            .foregroundStyle(.blue)
-                            .frame(width: 54, height: 54)
-                            .background(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .fill(Color(.systemGray5))
-                            )
+                            .imageScale(.large)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glass)
+                    .tint(.secondary)
+                    .controlSize(.large)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
             }
         }
         .listStyle(.insetGrouped)
@@ -290,6 +280,7 @@ struct PeopleListView: View {
     }
 }
 
+@available(iOS 26.0, *)
 struct PersonRowView: View {
     let person: Person
     @ObservedObject private var conversationLoader = PersonConversationInfoLoader()
@@ -391,6 +382,7 @@ struct PersonRowView: View {
     }
 }
 
+@available(iOS 26.0, *)
 struct PersonEditRowView: View {
     let person: Person
     let onEdit: () -> Void
@@ -431,6 +423,7 @@ struct PersonEditRowView: View {
     }
 }
 
+@available(iOS 26.0, *)
 #Preview {
     PeopleListView()
 }

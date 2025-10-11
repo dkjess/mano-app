@@ -33,6 +33,8 @@ struct ConversationView: View {
     @State private var showingClearConfirmation = false
     @State private var errorMessage: String? = nil
     @State private var showingErrorAlert = false
+    @State private var hapticGenerator = UIImpactFeedbackGenerator(style: .light)
+    @State private var lastHapticLength = 0
 
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
@@ -238,7 +240,13 @@ struct ConversationView: View {
                         }
                     }
                 }
-                .onChange(of: streamingText) { _, newValue in
+                .onChange(of: streamingText) { oldValue, newValue in
+                    // Haptic feedback on new content (every 10-15 characters)
+                    if newValue.count > lastHapticLength && newValue.count - lastHapticLength >= 10 {
+                        hapticGenerator.impactOccurred(intensity: 0.4)
+                        lastHapticLength = newValue.count
+                    }
+
                     // Only auto-scroll if user is not manually scrolling
                     if !newValue.isEmpty && !isUserScrolling {
                         let now = Date()
@@ -375,6 +383,8 @@ struct ConversationView: View {
             createdAt: Date()
         )
         streamingText = ""
+        lastHapticLength = 0
+        hapticGenerator.prepare()
         
         Task {
             do {
@@ -425,16 +435,32 @@ struct ConversationView: View {
                     throw error
                 }
 
+                // Create the final AI message from the streamed content
+                let finalAIMessage = Message(
+                    id: aiMessageId,
+                    userId: SupabaseManager.shared.user?.id ?? UUID(),
+                    content: streamingText,
+                    isUser: false,
+                    personId: person.id,
+                    topicId: nil,
+                    conversationId: nil,
+                    createdAt: Date()
+                )
+
                 await MainActor.run {
+                    // Append the completed AI message to local array
+                    messages.append(finalAIMessage)
+
+                    // Clear streaming state
                     streamingMessage = nil
                     streamingText = ""
                     contextualThinkingMessage = nil
                     analysisResult = nil
                 }
 
-                print("🔄 [SEND] Loading messages after send...")
-                await loadMessages()
-                print("✅ [SEND] Message send flow completed successfully")
+                // No need to reload from DB - we already have the content from streaming
+                // The backend saved it asynchronously, but we don't need to wait or reload
+                print("✅ [SEND] Message send flow completed successfully (no reload)")
             } catch {
                 print("❌ [SEND] Failed to send message - ERROR TYPE: \(type(of: error))")
                 print("❌ [SEND] Error description: \(error)")
