@@ -386,15 +386,15 @@ $$;
 
 -- Add comments
 COMMENT ON FUNCTION update_conversations_updated_at IS 'Trigger function with secure search_path';
-COMMENT ON FUNCTION match_conversation_embeddings IS 'Vector search with secure search_path';
-COMMENT ON FUNCTION match_conversation_summaries IS 'Summary search with secure search_path';
+COMMENT ON FUNCTION match_conversation_embeddings(vector(1536), uuid, float, int, text, text) IS 'Vector search with secure search_path';
+COMMENT ON FUNCTION match_conversation_summaries(vector(1536), uuid, float, int) IS 'Summary search with secure search_path';
 COMMENT ON FUNCTION update_updated_at_column IS 'Generic timestamp trigger with secure search_path';
 COMMENT ON FUNCTION update_conversation_on_message IS 'Conversation timestamp trigger with secure search_path';
-COMMENT ON FUNCTION calculate_profile_completion_score IS 'Profile scoring with secure search_path';
+COMMENT ON FUNCTION calculate_profile_completion_score(people) IS 'Profile scoring with secure search_path';
 COMMENT ON FUNCTION update_profile_completion_score IS 'Profile score trigger with secure search_path';
-COMMENT ON FUNCTION validate_message_ownership IS 'Security definer function with secure search_path';
+COMMENT ON FUNCTION validate_message_ownership(text, uuid, uuid) IS 'Security definer function with secure search_path';
 COMMENT ON FUNCTION update_message_file_count IS 'File count trigger with secure search_path';
 COMMENT ON FUNCTION cleanup_orphaned_files IS 'Cleanup function with secure search_path';
-COMMENT ON FUNCTION match_file_content_embeddings IS 'File content search with secure search_path';
+COMMENT ON FUNCTION match_file_content_embeddings(vector(1536), uuid, float, int, uuid, uuid, uuid) IS 'File content search with secure search_path';
 COMMENT ON FUNCTION update_person_profiles_updated_at IS 'Person profile timestamp trigger with secure search_path';
 COMMENT ON FUNCTION handle_new_user IS 'User creation trigger with secure search_path';
