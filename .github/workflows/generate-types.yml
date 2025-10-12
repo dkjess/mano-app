@@ -13,6 +13,7 @@ jobs:
   generate-types:
     name: Generate Database Types
     runs-on: ubuntu-latest
+    continue-on-error: true  # Don't block PRs - type generation is helpful but not critical
     permissions:
       contents: write
       pull-requests: write

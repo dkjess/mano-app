@@ -11,6 +11,7 @@ jobs:
   manage-preview-branch:
     name: Manage Supabase Preview Branch
     runs-on: ubuntu-latest
+    continue-on-error: true  # Don't block PRs - preview branches are optional
     permissions:
       pull-requests: write
       contents: read
