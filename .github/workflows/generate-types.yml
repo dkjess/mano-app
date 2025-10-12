@@ -1,0 +1,156 @@
+name: Generate TypeScript Types
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/supabase/migrations/**'
+  pull_request:
+    paths:
+      - 'backend/supabase/migrations/**'
+
+jobs:
+  generate-types:
+    name: Generate Database Types
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Deno
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Start Supabase
+      working-directory: ./backend
+      run: supabase start
+
+    - name: Apply migrations
+      working-directory: ./backend
+      run: supabase db reset
+
+    - name: Generate TypeScript types
+      id: generate
+      working-directory: ./backend
+      run: |
+        # Generate types
+        supabase gen types typescript --local > supabase/types/database.types.ts
+
+        # Check if types changed
+        if git diff --quiet supabase/types/database.types.ts; then
+          echo "types_changed=false" >> $GITHUB_OUTPUT
+          echo "No type changes detected"
+        else
+          echo "types_changed=true" >> $GITHUB_OUTPUT
+          echo "Type changes detected!"
+        fi
+
+    - name: Stop Supabase
+      if: always()
+      working-directory: ./backend
+      run: supabase stop
+
+    - name: Commit and push type changes (main branch)
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.generate.outputs.types_changed == 'true'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add backend/supabase/types/database.types.ts
+        git commit -m "chore: Update database types after migration
+
+        🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+        Co-Authored-By: Claude <noreply@anthropic.com>"
+        git push
+
+    - name: Create commit for PR
+      if: github.event_name == 'pull_request' && steps.generate.outputs.types_changed == 'true'
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add backend/supabase/types/database.types.ts
+        git commit -m "chore: Update database types after migration"
+
+    - name: Push changes to PR
+      if: github.event_name == 'pull_request' && steps.generate.outputs.types_changed == 'true'
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.head_ref }}
+
+    - name: Comment on PR with type changes
+      if: github.event_name == 'pull_request' && steps.generate.outputs.types_changed == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const body = `
+          ## 🔄 Database Types Updated
+
+          The database types have been automatically regenerated based on your migration changes.
+
+          **File updated:** \`backend/supabase/types/database.types.ts\`
+
+          ### What happened:
+          - Migrations were applied to a local Supabase instance
+          - TypeScript types were generated from the resulting schema
+          - Types were committed to this PR
+
+          ### Next steps:
+          - Review the type changes
+          - Update any code that uses the changed types
+          - Rebuild the iOS app if database models changed
+
+          🤖 This update was automated by the CI/CD pipeline.
+          `;
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+
+    - name: Comment on PR with no changes
+      if: github.event_name == 'pull_request' && steps.generate.outputs.types_changed == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const body = `
+          ## ✅ Database Types Unchanged
+
+          Your migration changes did not affect the TypeScript types.
+
+          This usually means:
+          - The migration only modified data, not schema
+          - The migration added constraints or indexes without changing table structure
+          - The migration is a rollback or cleanup
+
+          No action needed!
+          `;
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+
+    - name: Upload generated types as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: database-types
+        path: backend/supabase/types/database.types.ts
+        retention-days: 7
