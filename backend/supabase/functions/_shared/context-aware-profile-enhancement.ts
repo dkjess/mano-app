@@ -254,7 +254,15 @@ If the user response is unclear, vague, or says they don't know, set extractedVa
       throw new Error('No response from AI extraction');
     }
 
-    const result = JSON.parse((textContent as any).text);
+    // Strip markdown code blocks if present
+    let jsonText = (textContent as any).text.trim();
+    if (jsonText.startsWith('```json')) {
+      jsonText = jsonText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+
+    const result = JSON.parse(jsonText);
     
     // Ensure required fields
     return {
