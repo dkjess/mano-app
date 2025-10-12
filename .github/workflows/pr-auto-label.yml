@@ -1,0 +1,247 @@
+name: PR Auto-Label
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  auto-label:
+    name: Auto-label PR with Deployment Type
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Detect changes and determine deployment type
+      id: detect
+      run: |
+        # Get the list of changed files
+        git fetch origin ${{ github.base_ref }}
+        CHANGED_FILES=$(git diff --name-only origin/${{ github.base_ref }}...HEAD)
+
+        echo "Changed files:"
+        echo "$CHANGED_FILES"
+
+        # Initialize flags
+        BACKEND_CHANGED=false
+        IOS_CHANGED=false
+        DOCS_ONLY=true
+
+        # Check what changed
+        while IFS= read -r file; do
+          case "$file" in
+            backend/supabase/functions/*|backend/supabase/migrations/*|backend/supabase/config.toml)
+              BACKEND_CHANGED=true
+              DOCS_ONLY=false
+              ;;
+            Mano/*|ManoTests/*|ManoUITests/*|Mano.xcodeproj/*)
+              IOS_CHANGED=true
+              DOCS_ONLY=false
+              ;;
+            *.md|.github/workflows/*|scripts/*|.gitignore|LICENSE)
+              # Documentation/config files
+              ;;
+            *)
+              # Other files - consider as code changes
+              DOCS_ONLY=false
+              ;;
+          esac
+        done <<< "$CHANGED_FILES"
+
+        # Determine deployment type
+        if [ "$DOCS_ONLY" = true ]; then
+          DEPLOYMENT_TYPE="docs-only"
+          LABEL="📚 Docs/Config Only"
+          BADGE="📚 **Docs/Config Only - No Action Required**"
+        elif [ "$BACKEND_CHANGED" = true ] && [ "$IOS_CHANGED" = true ]; then
+          DEPLOYMENT_TYPE="full-stack"
+          LABEL="🔄 App + Backend"
+          BADGE="🔄 **App + Backend - Both Required**"
+        elif [ "$BACKEND_CHANGED" = true ]; then
+          DEPLOYMENT_TYPE="backend-only"
+          LABEL="☁️ Backend Only"
+          BADGE="☁️ **Backend Only - Auto-Deploy**"
+        elif [ "$IOS_CHANGED" = true ]; then
+          DEPLOYMENT_TYPE="app-only"
+          LABEL="📱 App Only"
+          BADGE="📱 **App Only - Rebuild Required**"
+        else
+          DEPLOYMENT_TYPE="other"
+          LABEL="🔧 Other Changes"
+          BADGE="🔧 **Other Changes**"
+        fi
+
+        echo "deployment_type=$DEPLOYMENT_TYPE" >> $GITHUB_OUTPUT
+        echo "label=$LABEL" >> $GITHUB_OUTPUT
+        echo "badge=$BADGE" >> $GITHUB_OUTPUT
+
+        echo "Deployment type: $DEPLOYMENT_TYPE"
+        echo "Label: $LABEL"
+
+    - name: Add deployment type label
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const label = '${{ steps.detect.outputs.label }}';
+
+          // Remove old deployment labels
+          const oldLabels = ['📱 App Only', '☁️ Backend Only', '🔄 App + Backend', '📚 Docs/Config Only', '🔧 Other Changes'];
+          const currentLabels = await github.rest.issues.listLabelsOnIssue({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number
+          });
+
+          for (const oldLabel of oldLabels) {
+            if (currentLabels.data.some(l => l.name === oldLabel)) {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: oldLabel
+              }).catch(() => {}); // Ignore if label doesn't exist
+            }
+          }
+
+          // Add new label
+          await github.rest.issues.addLabels({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            labels: [label]
+          });
+
+    - name: Check if PR description has deployment badge
+      id: check-badge
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pr } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+
+          const body = pr.body || '';
+          const hasBadge = /^(📱|☁️|🔄|📚)\s*\*\*/.test(body.trim());
+
+          return hasBadge;
+
+    - name: Add deployment badge to PR description
+      if: steps.check-badge.outputs.result == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const { data: pr } = await github.rest.pulls.get({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number
+          });
+
+          const badge = '${{ steps.detect.outputs.badge }}';
+          const currentBody = pr.body || '';
+
+          let deploymentInstructions = '';
+          const deploymentType = '${{ steps.detect.outputs.deployment_type }}';
+
+          if (deploymentType === 'app-only') {
+            deploymentInstructions = '\n\n**Jess needs to:** Rebuild app in Xcode (⇧⌘K then ⌘R)';
+          } else if (deploymentType === 'backend-only') {
+            deploymentInstructions = '\n\n**Jess needs to:** Just merge - auto-deploys via CI/CD';
+          } else if (deploymentType === 'full-stack') {
+            deploymentInstructions = '\n\n**Jess needs to:** Merge (backend auto-deploys) + rebuild app';
+          } else if (deploymentType === 'docs-only') {
+            deploymentInstructions = '\n\n**Jess needs to:** Just merge - nothing to deploy';
+          }
+
+          const newBody = badge + deploymentInstructions + '\n\n---\n\n' + currentBody;
+
+          await github.rest.pulls.update({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            pull_number: context.issue.number,
+            body: newBody
+          });
+
+          core.info('Added deployment badge to PR description');
+
+    - name: Comment on PR with deployment info
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const deploymentType = '${{ steps.detect.outputs.deployment_type }}';
+          const badge = '${{ steps.detect.outputs.badge }}';
+
+          let emoji = '🤖';
+          let message = '';
+
+          if (deploymentType === 'app-only') {
+            emoji = '📱';
+            message = `
+            ## ${badge}
+
+            This PR contains iOS/SwiftUI changes only.
+
+            **Deployment Instructions:**
+            1. Merge this PR
+            2. Open Xcode
+            3. Clean build folder (⇧⌘K)
+            4. Build and run (⌘R)
+
+            **No backend deployment needed!**
+            `;
+          } else if (deploymentType === 'backend-only') {
+            emoji = '☁️';
+            message = `
+            ## ${badge}
+
+            This PR contains backend changes (Edge Functions, migrations, or database schema).
+
+            **Deployment Instructions:**
+            1. Merge this PR
+            2. CI/CD will automatically deploy to production
+            3. Verify deployment in GitHub Actions logs
+
+            **No app rebuild needed!**
+            `;
+          } else if (deploymentType === 'full-stack') {
+            emoji = '🔄';
+            message = `
+            ## ${badge}
+
+            This PR contains both backend and iOS changes.
+
+            **Deployment Instructions:**
+            1. Merge this PR
+            2. Backend will auto-deploy via CI/CD
+            3. Wait for deployment to complete
+            4. Rebuild app in Xcode (⇧⌘K then ⌘R)
+
+            **Both deployments required!**
+            `;
+          } else if (deploymentType === 'docs-only') {
+            emoji = '📚';
+            message = `
+            ## ${badge}
+
+            This PR contains documentation or configuration changes only.
+
+            **Deployment Instructions:**
+            1. Merge this PR
+
+            **No deployment needed!**
+            `;
+          }
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: message
+          });

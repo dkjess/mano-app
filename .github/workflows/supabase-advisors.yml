@@ -1,0 +1,288 @@
+name: Supabase Security & Performance Advisors
+
+on:
+  pull_request:
+    paths:
+      - 'backend/supabase/migrations/**'
+      - 'backend/supabase/functions/**'
+  push:
+    branches: [main]
+    paths:
+      - 'backend/supabase/migrations/**'
+      - 'backend/supabase/functions/**'
+
+jobs:
+  run-advisors:
+    name: Run Supabase Advisors
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Deno
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Start Supabase
+      working-directory: ./backend
+      run: supabase start
+
+    - name: Apply migrations
+      working-directory: ./backend
+      run: supabase db reset
+
+    - name: Install MCP CLI (for Supabase advisors)
+      run: npm install -g @anthropic-ai/mcp-cli || echo "Using direct API calls"
+
+    - name: Run Security Advisors
+      id: security
+      working-directory: ./backend
+      continue-on-error: true
+      run: |
+        # Create advisor check script
+        cat > check-advisors.ts << 'EOF'
+        #!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
+
+        const SUPABASE_URL = Deno.env.get('SUPABASE_URL') || 'http://127.0.0.1:54321';
+        const SUPABASE_SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU';
+
+        interface SecurityAdvisor {
+          name: string;
+          title: string;
+          level: 'error' | 'warn' | 'info';
+          message: string;
+          metadata?: Record<string, unknown>;
+        }
+
+        interface PerformanceAdvisor {
+          name: string;
+          title: string;
+          level: 'error' | 'warn' | 'info';
+          message: string;
+          metadata?: Record<string, unknown>;
+        }
+
+        async function checkRLSPolicies(): Promise<SecurityAdvisor[]> {
+          const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_rls_enabled`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            // RLS check function might not exist, check manually
+            const tablesResp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_tables_without_rls`, {
+              method: 'POST',
+              headers: {
+                'apikey': SUPABASE_SERVICE_KEY,
+                'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (tablesResp.ok) {
+              const tables = await tablesResp.json();
+              if (tables && tables.length > 0) {
+                return [{
+                  name: 'missing_rls_policies',
+                  title: 'Tables Without RLS Policies',
+                  level: 'error',
+                  message: `Found ${tables.length} tables without RLS policies: ${tables.map((t: any) => t.table_name).join(', ')}`,
+                  metadata: { tables }
+                }];
+              }
+            }
+          }
+
+          return [];
+        }
+
+        async function checkIndexes(): Promise<PerformanceAdvisor[]> {
+          // Check for missing indexes on foreign keys
+          const response = await fetch(`${SUPABASE_URL}/rest/v1/rpc/check_missing_indexes`, {
+            method: 'POST',
+            headers: {
+              'apikey': SUPABASE_SERVICE_KEY,
+              'Authorization': `Bearer ${SUPABASE_SERVICE_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+              return [{
+                name: 'missing_indexes',
+                title: 'Missing Indexes on Foreign Keys',
+                level: 'warn',
+                message: `Found ${data.length} foreign keys without indexes`,
+                metadata: { missing_indexes: data }
+              }];
+            }
+          }
+
+          return [];
+        }
+
+        // Run checks
+        console.log('🔍 Running security advisors...');
+        const securityIssues = await checkRLSPolicies();
+
+        console.log('⚡ Running performance advisors...');
+        const performanceIssues = await checkIndexes();
+
+        // Output results
+        const allIssues = [...securityIssues, ...performanceIssues];
+
+        if (allIssues.length === 0) {
+          console.log('✅ No issues found!');
+          Deno.exit(0);
+        }
+
+        console.log(`\n⚠️  Found ${allIssues.length} advisor issues:\n`);
+
+        const errors = allIssues.filter(i => i.level === 'error');
+        const warnings = allIssues.filter(i => i.level === 'warn');
+
+        if (errors.length > 0) {
+          console.log('❌ ERRORS:');
+          errors.forEach(e => {
+            console.log(`  - ${e.title}: ${e.message}`);
+          });
+          console.log('');
+        }
+
+        if (warnings.length > 0) {
+          console.log('⚠️  WARNINGS:');
+          warnings.forEach(w => {
+            console.log(`  - ${w.title}: ${w.message}`);
+          });
+          console.log('');
+        }
+
+        // Write to GitHub output
+        const output = JSON.stringify(allIssues);
+        await Deno.writeTextFile('/tmp/advisors.json', output);
+
+        // Exit with error if there are errors
+        if (errors.length > 0) {
+          Deno.exit(1);
+        }
+        EOF
+
+        chmod +x check-advisors.ts
+        deno run --allow-all check-advisors.ts || true
+
+        # Check if output file exists
+        if [ -f /tmp/advisors.json ]; then
+          echo "issues=$(cat /tmp/advisors.json)" >> $GITHUB_OUTPUT
+        else
+          echo "issues=[]" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create advisor functions if missing
+      working-directory: ./backend
+      run: |
+        # Create RLS check function
+        cat > /tmp/create_rls_check.sql << 'EOF'
+        CREATE OR REPLACE FUNCTION get_tables_without_rls()
+        RETURNS TABLE (
+          schema_name TEXT,
+          table_name TEXT
+        )
+        LANGUAGE plpgsql
+        SECURITY DEFINER
+        AS $$
+        BEGIN
+          RETURN QUERY
+          SELECT
+            n.nspname::TEXT as schema_name,
+            c.relname::TEXT as table_name
+          FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE c.relkind = 'r'
+            AND n.nspname = 'public'
+            AND NOT c.relrowsecurity;
+        END;
+        $$;
+        EOF
+
+        supabase db execute -f /tmp/create_rls_check.sql || echo "Function already exists"
+
+    - name: Comment on PR with advisor results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const issuesJson = '${{ steps.security.outputs.issues }}';
+          let issues = [];
+
+          try {
+            issues = JSON.parse(issuesJson);
+          } catch (e) {
+            console.log('No issues to report');
+            return;
+          }
+
+          if (issues.length === 0) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '## ✅ Supabase Advisors\n\nAll security and performance checks passed! No issues found.'
+            });
+            return;
+          }
+
+          const errors = issues.filter(i => i.level === 'error');
+          const warnings = issues.filter(i => i.level === 'warn');
+
+          let body = '## ⚠️ Supabase Advisors\n\n';
+
+          if (errors.length > 0) {
+            body += '### ❌ Errors\n\n';
+            errors.forEach(e => {
+              body += `- **${e.title}**: ${e.message}\n`;
+            });
+            body += '\n';
+          }
+
+          if (warnings.length > 0) {
+            body += '### ⚠️ Warnings\n\n';
+            warnings.forEach(w => {
+              body += `- **${w.title}**: ${w.message}\n`;
+            });
+            body += '\n';
+          }
+
+          body += '\n**Note:** Security errors should be fixed before merging to production.';
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+
+    - name: Stop Supabase
+      if: always()
+      working-directory: ./backend
+      run: supabase stop

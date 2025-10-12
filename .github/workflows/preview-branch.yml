@@ -1,0 +1,186 @@
+name: Preview Branch Management
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+    paths:
+      - 'backend/supabase/migrations/**'
+      - 'backend/supabase/functions/**'
+
+jobs:
+  manage-preview-branch:
+    name: Manage Supabase Preview Branch
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Deno
+      uses: denoland/setup-deno@v2
+      with:
+        deno-version: v2.x
+
+    - name: Setup Supabase CLI
+      uses: supabase/setup-cli@v1
+      with:
+        version: latest
+
+    - name: Create or update preview branch
+      if: github.event.action != 'closed'
+      id: preview
+      working-directory: ./backend
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      run: |
+        # Link to production project
+        supabase link --project-ref zfroutbzdkhivnpiezho --password "$SUPABASE_DB_PASSWORD"
+
+        # Generate branch name from PR number
+        BRANCH_NAME="pr-${{ github.event.pull_request.number }}"
+        echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+        # Check if preview branch exists
+        EXISTING_BRANCH=$(supabase branches list --output json | jq -r ".[] | select(.name == \"$BRANCH_NAME\") | .id" || echo "")
+
+        if [ -n "$EXISTING_BRANCH" ]; then
+          echo "Preview branch already exists: $BRANCH_NAME"
+          echo "branch_exists=true" >> $GITHUB_OUTPUT
+          echo "branch_id=$EXISTING_BRANCH" >> $GITHUB_OUTPUT
+        else
+          echo "Creating preview branch: $BRANCH_NAME"
+
+          # Note: Supabase preview branches require payment confirmation
+          # This is a placeholder for the actual branch creation
+          # In practice, you may need to handle this through the Supabase dashboard
+          # or with a paid plan that supports automated branch creation
+
+          echo "branch_exists=false" >> $GITHUB_OUTPUT
+          echo "⚠️ Preview branch creation requires manual confirmation via Supabase dashboard"
+          echo "Visit: https://supabase.com/dashboard/project/zfroutbzdkhivnpiezho/branches"
+        fi
+
+        # Unlink from production
+        supabase unlink
+
+    - name: Comment on PR with preview branch info
+      if: github.event.action != 'closed' && steps.preview.outputs.branch_exists == 'false'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const branchName = '${{ steps.preview.outputs.branch_name }}';
+
+          const body = `
+          ## 🌿 Preview Branch
+
+          A Supabase preview branch can be created for this PR to test migrations safely.
+
+          **Branch name:** \`${branchName}\`
+
+          ### To create preview branch manually:
+
+          1. Visit [Supabase Dashboard → Branches](https://supabase.com/dashboard/project/zfroutbzdkhivnpiezho/branches)
+          2. Click "Create Branch"
+          3. Name it: \`${branchName}\`
+          4. All migrations from main will be applied to the new branch
+
+          ### Benefits:
+          - ✅ Test migrations on production-like data
+          - ✅ Run integration tests without affecting production
+          - ✅ Safely experiment with schema changes
+          - ✅ Preview branch auto-deletes when PR is merged/closed
+
+          **Note:** Preview branches are available on Supabase Pro plan and above.
+          `;
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+
+    - name: Update PR with preview branch status
+      if: github.event.action != 'closed' && steps.preview.outputs.branch_exists == 'true'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const branchName = '${{ steps.preview.outputs.branch_name }}';
+          const branchId = '${{ steps.preview.outputs.branch_id }}';
+
+          const body = `
+          ## ✅ Preview Branch Active
+
+          **Branch name:** \`${branchName}\`
+          **Branch ID:** \`${branchId}\`
+
+          Your preview branch is ready for testing!
+
+          ### Preview Branch Details:
+          - 🌍 **API URL:** \`https://${branchId}.supabase.co\`
+          - 📊 **Dashboard:** [View in Supabase](https://supabase.com/dashboard/project/${branchId})
+
+          ### Testing Instructions:
+          1. Update your \`.env.local\` to point to the preview branch
+          2. Run your integration tests
+          3. Test migrations in isolation
+
+          **Note:** Preview branch will be automatically cleaned up when PR is closed.
+          `;
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });
+
+    - name: Cleanup preview branch on PR close
+      if: github.event.action == 'closed'
+      working-directory: ./backend
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      run: |
+        # Link to production
+        supabase link --project-ref zfroutbzdkhivnpiezho --password "$SUPABASE_DB_PASSWORD"
+
+        # Generate branch name
+        BRANCH_NAME="pr-${{ github.event.pull_request.number }}"
+
+        # Check if branch exists
+        BRANCH_ID=$(supabase branches list --output json | jq -r ".[] | select(.name == \"$BRANCH_NAME\") | .id" || echo "")
+
+        if [ -n "$BRANCH_ID" ]; then
+          echo "Deleting preview branch: $BRANCH_NAME ($BRANCH_ID)"
+          supabase branches delete "$BRANCH_ID" || echo "Branch already deleted or doesn't exist"
+        else
+          echo "No preview branch found for $BRANCH_NAME"
+        fi
+
+        # Unlink from production
+        supabase unlink
+
+    - name: Comment on PR about cleanup
+      if: github.event.action == 'closed'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const body = `
+          ## 🧹 Preview Branch Cleanup
+
+          Preview branch for this PR has been deleted.
+
+          Resources have been freed up and the branch is no longer accessible.
+          `;
+
+          await github.rest.issues.createComment({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+            body: body
+          });

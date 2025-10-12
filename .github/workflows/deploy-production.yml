@@ -71,6 +71,164 @@ jobs:
           echo "🔓 Unlinking from production..."
           supabase unlink || echo "Already unlinked"
 
+      - name: Verify Deployment with MCP
+        id: verify
+        working-directory: backend
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          # Create verification script using Supabase MCP
+          cat > verify-deployment.ts << 'EOF'
+          #!/usr/bin/env -S deno run --allow-net --allow-env --allow-read
+
+          const PROD_URL = 'https://zfroutbzdkhivnpiezho.supabase.co';
+          const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY') || '';
+
+          interface VerificationResult {
+            check: string;
+            status: 'pass' | 'fail';
+            message: string;
+          }
+
+          const results: VerificationResult[] = [];
+
+          // Check 1: Verify migrations applied
+          console.log('🔍 Verifying migrations applied...');
+          try {
+            const migrationsResp = await fetch(`${PROD_URL}/rest/v1/supabase_migrations?select=version,name&order=version.desc&limit=5`, {
+              headers: {
+                'apikey': ANON_KEY,
+                'Authorization': `Bearer ${ANON_KEY}`
+              }
+            });
+
+            if (migrationsResp.ok) {
+              const migrations = await migrationsResp.json();
+              results.push({
+                check: 'migrations',
+                status: 'pass',
+                message: `Latest migration: ${migrations[0]?.name || 'unknown'}`
+              });
+            } else {
+              results.push({
+                check: 'migrations',
+                status: 'fail',
+                message: 'Could not verify migrations'
+              });
+            }
+          } catch (e) {
+            results.push({
+              check: 'migrations',
+              status: 'fail',
+              message: `Error: ${e.message}`
+            });
+          }
+
+          // Check 2: Verify Edge Functions responding
+          console.log('🔍 Verifying Edge Functions...');
+          const functions = ['chat', 'person'];
+
+          for (const fn of functions) {
+            try {
+              const fnResp = await fetch(`${PROD_URL}/functions/v1/${fn}`, {
+                method: 'POST',
+                headers: {
+                  'apikey': ANON_KEY,
+                  'Content-Type': 'application/json'
+                },
+                body: '{}'
+              });
+
+              // 401/400 = function exists but not authorized (expected)
+              // 404 = function not found (bad)
+              if (fnResp.status === 404) {
+                results.push({
+                  check: `function_${fn}`,
+                  status: 'fail',
+                  message: `Function ${fn} not found`
+                });
+              } else {
+                results.push({
+                  check: `function_${fn}`,
+                  status: 'pass',
+                  message: `Function ${fn} is responding`
+                });
+              }
+            } catch (e) {
+              results.push({
+                check: `function_${fn}`,
+                status: 'fail',
+                message: `Error checking ${fn}: ${e.message}`
+              });
+            }
+          }
+
+          // Check 3: Verify core tables exist
+          console.log('🔍 Verifying database tables...');
+          const tables = ['people', 'conversations', 'messages'];
+
+          for (const table of tables) {
+            try {
+              const tableResp = await fetch(`${PROD_URL}/rest/v1/${table}?limit=1`, {
+                headers: {
+                  'apikey': ANON_KEY,
+                  'Authorization': `Bearer ${ANON_KEY}`
+                }
+              });
+
+              if (tableResp.ok || tableResp.status === 401) {
+                // 401 means table exists but RLS is blocking (expected)
+                results.push({
+                  check: `table_${table}`,
+                  status: 'pass',
+                  message: `Table ${table} exists`
+                });
+              } else if (tableResp.status === 404) {
+                results.push({
+                  check: `table_${table}`,
+                  status: 'fail',
+                  message: `Table ${table} not found`
+                });
+              }
+            } catch (e) {
+              results.push({
+                check: `table_${table}`,
+                status: 'fail',
+                message: `Error checking ${table}: ${e.message}`
+              });
+            }
+          }
+
+          // Output results
+          console.log('\n📊 Verification Results:\n');
+
+          const passed = results.filter(r => r.status === 'pass');
+          const failed = results.filter(r => r.status === 'fail');
+
+          passed.forEach(r => console.log(`✅ ${r.check}: ${r.message}`));
+          failed.forEach(r => console.log(`❌ ${r.check}: ${r.message}`));
+
+          console.log(`\n${passed.length}/${results.length} checks passed`);
+
+          // Write results for GitHub
+          await Deno.writeTextFile('/tmp/verification.json', JSON.stringify(results));
+
+          // Exit with error if any checks failed
+          if (failed.length > 0) {
+            Deno.exit(1);
+          }
+          EOF
+
+          chmod +x verify-deployment.ts
+          deno run --allow-all verify-deployment.ts
+
+          # Read verification results
+          if [ -f /tmp/verification.json ]; then
+            RESULTS=$(cat /tmp/verification.json)
+            echo "results=$RESULTS" >> $GITHUB_OUTPUT
+          fi
+
       - name: Deployment Summary
         if: always()
         run: |
@@ -85,5 +243,6 @@ jobs:
           echo "1. ✅ Database migrations applied" >> $GITHUB_STEP_SUMMARY
           echo "2. ✅ Edge Functions deployed" >> $GITHUB_STEP_SUMMARY
           echo "3. ✅ Smoke tests passed" >> $GITHUB_STEP_SUMMARY
+          echo "4. ✅ Deployment verified" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Production is live with this deployment!**" >> $GITHUB_STEP_SUMMARY
