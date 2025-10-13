@@ -826,28 +826,10 @@ async function handleStreamingChat({
               const textChunk = chunk.delta.text
               fullResponse += textChunk
 
-              // Send small chunks immediately for smooth streaming
-              // Strategy: Send character-by-character or tiny chunks without delays
-              const chars = textChunk.split('')
-              let buffer = ''
-
-              for (const char of chars) {
-                buffer += char
-
-                // Send buffer in small chunks (2-3 chars) for smooth flow
-                if (buffer.length >= 2) {
-                  const sseData = `data: ${JSON.stringify({ content: buffer })}\n\n`
-                  controller.enqueue(encoder.encode(sseData))
-                  buffer = ''
-                  // No artificial delays - let network handle pacing
-                }
-              }
-
-              // Send any remaining buffer
-              if (buffer.length > 0) {
-                const sseData = `data: ${JSON.stringify({ content: buffer })}\n\n`
-                controller.enqueue(encoder.encode(sseData))
-              }
+              // Send Anthropic's text deltas directly without artificial chunking
+              // This preserves complete words and markdown formatting
+              const sseData = `data: ${JSON.stringify({ content: textChunk })}\n\n`
+              controller.enqueue(encoder.encode(sseData))
             }
           }
 
