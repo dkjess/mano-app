@@ -52,19 +52,24 @@ struct MessageBubbleView: View {
 
     private var aiMessageView: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Full-width AI message with streaming support
-            HStack {
+            // Full-width AI message with streaming support and markdown rendering
+            HStack(alignment: .top) {
                 if isStreaming {
-                    // Use StreamingTextView for smooth animations
-                    StreamingTextView(text: message.content.replacingOccurrences(of: "|", with: ""))
-                        .font(.body)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.leading)
+                    // Use StreamingMarkdownView for smooth animations with markdown
+                    StreamingMarkdownView(
+                        text: message.content.replacingOccurrences(of: "|", with: ""),
+                        isUserMessage: false
+                    )
+                    .font(.body)
+                    .foregroundColor(.primary)
                 } else {
-                    Text(message.content.replacingOccurrences(of: "|", with: ""))
-                        .font(.body)
-                        .foregroundColor(.primary)
-                        .multilineTextAlignment(.leading)
+                    // Use MarkdownView for completed messages
+                    MarkdownView(
+                        content: message.content.replacingOccurrences(of: "|", with: ""),
+                        isUserMessage: false
+                    )
+                    .font(.body)
+                    .foregroundColor(.primary)
                 }
                 Spacer()
             }
