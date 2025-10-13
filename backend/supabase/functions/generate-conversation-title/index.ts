@@ -63,7 +63,7 @@ async function generateConversationTitle(conversationId: string, userId: string,
 
     // Generate title using Claude
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 20,
       system: TITLE_GENERATION_PROMPT.replace('{conversation_content}', conversationContent),
       messages: [

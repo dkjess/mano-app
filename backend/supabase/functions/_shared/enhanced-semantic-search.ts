@@ -136,7 +136,7 @@ Expand the original query to include relevant context while maintaining search i
 Respond with only the expanded query (no explanations):`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 100,
         system: prompt,
         messages: [{
@@ -229,7 +229,7 @@ Respond in JSON format:
 }`;
 
     const response = await this.anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 200,
       system: prompt,
       messages: [{
@@ -353,7 +353,7 @@ Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 400,
         system: prompt,
         messages: [{

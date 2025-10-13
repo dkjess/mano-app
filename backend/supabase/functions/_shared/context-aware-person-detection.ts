@@ -185,7 +185,7 @@ Only include people with scores 6 or higher.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 500,
       system: prompt,
       messages: [

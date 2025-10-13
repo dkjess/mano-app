@@ -133,7 +133,7 @@ Generate a concise initial profile (100-150 words) that:
 Write in a professional, helpful tone that provides useful context for management conversations. Focus on actionable insights that will help the manager have better conversations about this person.`;
 
             const response = await anthropic.messages.create({
-              model: 'claude-sonnet-4-20250514',
+              model: 'claude-sonnet-4-5-20250929',
               max_tokens: 400,
               system: prompt,
               messages: [

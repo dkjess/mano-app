@@ -214,7 +214,7 @@ Respond in JSON format:
 If no meaningful connection exists, respond: {"has_connection": false}`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 400,
         system: prompt,
         messages: [{
@@ -291,7 +291,7 @@ Respond in JSON format:
 If no meaningful thematic connection exists, respond: {"has_thematic_connection": false}`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 300,
         system: prompt,
         messages: [{
@@ -398,7 +398,7 @@ Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 500,
         system: prompt,
         messages: [{
