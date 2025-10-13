@@ -159,7 +159,7 @@ Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 300,
         system: prompt,
         messages: [{
@@ -277,7 +277,7 @@ If follow-up is needed, respond in JSON format:
 If no follow-up needed, respond: {"needs_followup": false}`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 250,
         system: prompt,
         messages: [{
@@ -381,7 +381,7 @@ Generate 1-2 high-value team insights. Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 400,
         system: prompt,
         messages: [{

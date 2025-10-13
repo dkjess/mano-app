@@ -786,7 +786,7 @@ async function handleStreamingChat({
 
           // Get TRUE streaming response from Anthropic
           const streamingResponse = await anthropic.messages.stream({
-            model: 'claude-sonnet-4-20250514',
+            model: 'claude-sonnet-4-5-20250929',
             max_tokens: 4000,
             system: systemPrompt, // Use the built system prompt
             messages: [
@@ -1637,7 +1637,7 @@ This will help you give better, more personalized advice in future conversations
     for (let attempt = 1; attempt <= maxRetries + 1; attempt++) {
       try {
         const response = await anthropic.messages.create({
-          model: 'claude-sonnet-4-20250514', // Keep default for regular chat
+          model: 'claude-sonnet-4-5-20250929', // Keep default for regular chat
           max_tokens: 600,
           system: systemPrompt,
           messages: [

@@ -88,7 +88,7 @@ Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 500,
         system: prompt,
         messages: [{
@@ -278,7 +278,7 @@ Respond in JSON format:
 }`;
 
       const response = await this.anthropic.messages.create({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 300,
         system: prompt,
         messages: [{
