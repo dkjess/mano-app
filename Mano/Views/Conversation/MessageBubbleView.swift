@@ -11,18 +11,51 @@ struct MessageBubbleView: View {
     let message: Message
     let isStreaming: Bool
 
+    private let pinnedService = PinnedMessageService.shared
+    @State private var isPinned = false
+    @State private var showingPinConfirmation = false
+
     init(message: Message, isStreaming: Bool = false) {
         self.message = message
         self.isStreaming = isStreaming
     }
 
     var body: some View {
-        if message.isUser {
-            // User messages: Keep blue bubbles with right alignment
-            userMessageView
-        } else {
-            // AI messages: Full-width, no bubble
-            aiMessageView
+        Group {
+            if message.isUser {
+                // User messages: Keep blue bubbles with right alignment
+                userMessageView
+            } else {
+                // AI messages: Full-width, no bubble with context menu
+                aiMessageView
+                    .contextMenu {
+                        // Pin/Unpin button
+                        Button {
+                            Task {
+                                await togglePin()
+                            }
+                        } label: {
+                            Label(isPinned ? "Unpin Advice" : "Pin Advice", systemImage: isPinned ? "pin.slash" : "pin")
+                        }
+
+                        // Copy button
+                        Button {
+                            UIPasteboard.general.string = message.content
+                        } label: {
+                            Label("Copy", systemImage: "doc.on.doc")
+                        }
+
+                        // Share button
+                        Button {
+                            shareMessage()
+                        } label: {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                    }
+            }
+        }
+        .task {
+            await checkIfPinned()
         }
     }
 
@@ -89,7 +122,7 @@ struct MessageBubbleView: View {
     private func timeString(from date: Date) -> String {
         let formatter = DateFormatter()
         let calendar = Calendar.current
-        
+
         if calendar.isDateInToday(date) {
             formatter.dateFormat = "h:mm a"
         } else if calendar.isDateInYesterday(date) {
@@ -97,8 +130,57 @@ struct MessageBubbleView: View {
         } else {
             formatter.dateFormat = "MMM d, h:mm a"
         }
-        
+
         return formatter.string(from: date)
+    }
+
+    // MARK: - Pin Management
+
+    private func checkIfPinned() async {
+        do {
+            isPinned = try await pinnedService.isMessagePinned(messageId: message.id)
+        } catch {
+            print("❌ Error checking pin status: \(error)")
+        }
+    }
+
+    private func togglePin() async {
+        do {
+            if isPinned {
+                try await pinnedService.unpinMessage(messageId: message.id)
+                isPinned = false
+            } else {
+                try await pinnedService.pinMessage(
+                    messageId: message.id,
+                    personId: message.personId,
+                    topicId: message.topicId
+                )
+                isPinned = true
+                showingPinConfirmation = true
+
+                // Add haptic feedback
+                #if os(iOS)
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+                #endif
+            }
+        } catch {
+            print("❌ Error toggling pin: \(error)")
+        }
+    }
+
+    private func shareMessage() {
+        #if os(iOS)
+        let activityVC = UIActivityViewController(
+            activityItems: [message.content],
+            applicationActivities: nil
+        )
+
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootVC = windowScene.windows.first?.rootViewController {
+            rootVC.present(activityVC, animated: true)
+        }
+        #endif
     }
 }
 
