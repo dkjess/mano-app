@@ -217,16 +217,27 @@ xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug -destinatio
 ### Backend (backend/)
 - **Supabase Edge Functions** in TypeScript/Deno
 - **Main chat function** at `supabase/functions/chat/index.ts` - handles AI conversations using Anthropic Claude
-- **Database migrations** for people management, conversations, embeddings
+- **Conversation Management** via `_shared/conversation-manager.ts` - creates and manages conversations
+- **Database migrations** for people management, conversations, embeddings, pinned messages
 - **Storage** for message attachments
 - **Authentication** with Google OAuth and email
 
 ### iOS Client
 - `ManoApp.swift` - Main app entry point
-- `ContentView.swift` - Primary view with navigation
-- `WaveView.swift` - Secondary view (demo)
+- `MainTabView.swift` - Two-tab navigation (People / Pinned)
+- `ManoHomeView.swift` - People list and management
+- `ConversationView.swift` - Chat interface with streaming
+- `PinnedView.swift` - Saved advice from conversations
 - Target: iOS 26.0, macOS 26.0, visionOS 26.0
 - Bundle ID: `ai.supermano.Mano`
+
+### Key Features
+- **People Management**: Track and manage conversations with team members
+- **Self-Reflection**: Special "self" person for personal coaching
+- **Conversations**: Each person has active conversation threads
+- **Pinned Advice**: Save important coaching insights for later reference
+- **Streaming Responses**: Real-time AI responses with markdown rendering
+- **Speech-to-Text**: Tap-and-hold dictation for message input
 
 ## Development Commands
 
@@ -357,7 +368,7 @@ supabase projects list
 **MANDATORY BUILD TESTING**: Always run the build test script before claiming any iOS code changes work:
 
 ```bash
-# Required: Test build with consistent target (iPhone 16 Pro, iOS 26.0)
+# Required: Test build with consistent target (iPhone 17, iOS 26.0)
 ./scripts/build-test.sh
 
 # The script will output:
@@ -373,7 +384,7 @@ xcodebuild -project Mano.xcodeproj -scheme Mano -configuration Debug
 
 **Build Testing Requirements:**
 - **Always use** `./scripts/build-test.sh` before claiming code works
-- **Target consistency**: iPhone 16 Pro with iOS 26.0
+- **Target consistency**: iPhone 17 with iOS 26.0
 - **Error visibility**: Script captures and displays all build errors
 - **No assumptions**: Never assume code compiles without testing
 
