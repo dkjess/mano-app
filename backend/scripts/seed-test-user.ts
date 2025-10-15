@@ -262,9 +262,9 @@ async function seedTestUser() {
       console.log(`   ✅ Created ${topics.length} sample topics`);
     }
 
-    // Step 4: Create some sample messages
+    // Step 4: Create some sample messages with conversations
     console.log('\n4️⃣ Creating sample messages...');
-    
+
     // Get the first person for sample messages
     const { data: people } = await supabase
       .from('people')
@@ -274,7 +274,7 @@ async function seedTestUser() {
 
     if (people && people.length > 0) {
       const person = people[0];
-      
+
       // Check if messages already exist
       const { data: existingMessages } = await supabase
         .from('messages')
@@ -284,24 +284,42 @@ async function seedTestUser() {
       if (existingMessages && existingMessages.length > 0) {
         console.log('   ✅ Sample messages already exist, skipping creation');
       } else {
+        // First create a conversation
+        const { data: conversation, error: conversationError } = await supabase
+          .from('conversations')
+          .insert({
+            person_id: person.id,
+            title: 'Project Status Discussion',
+            is_active: true
+          })
+          .select()
+          .single();
+
+        if (conversationError) {
+          throw new Error(`Failed to create conversation: ${conversationError.message}`);
+        }
+
         const sampleMessages = [
           {
             content: `Hi ${person.name}, how are things going with the current project?`,
             is_user: true,
             person_id: person.id,
-            user_id: TEST_USER.id
+            user_id: TEST_USER.id,
+            conversation_id: conversation.id
           },
           {
             content: `Things are going well! We're making good progress on the React migration. I should have the authentication components done by end of week.`,
             is_user: false,
             person_id: person.id,
-            user_id: TEST_USER.id
+            user_id: TEST_USER.id,
+            conversation_id: conversation.id
           },
           {
             content: `That's great to hear! Let me know if you need any help or have blockers.`,
             is_user: true,
             person_id: person.id,
-            user_id: TEST_USER.id
+            user_id: TEST_USER.id,
+            conversation_id: conversation.id
           }
         ];
 
@@ -314,7 +332,7 @@ async function seedTestUser() {
           throw new Error(`Failed to create messages: ${messagesError.message}`);
         }
 
-        console.log(`   ✅ Created ${messages.length} sample messages`);
+        console.log(`   ✅ Created conversation and ${messages.length} sample messages`);
       }
     }
 
