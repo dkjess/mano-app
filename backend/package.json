@@ -11,6 +11,7 @@
     "reset": "./scripts/safe-db-reset.sh",
     "reset:unsafe": "supabase db reset",
     "setup": "./scripts/dev-setup.sh",
+    "setup:hooks": "./scripts/install-test-hooks.sh",
     "seed:dev": "npx tsx scripts/seed-test-user.ts",
     "test": "cd tests && deno task test",
     "test:unit": "cd tests && deno task test:unit",

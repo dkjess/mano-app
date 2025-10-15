@@ -753,12 +753,62 @@ npm run test
   - `create-embeddings.test.ts` - Embedding generation
   - `delete-account.test.ts` - Account deletion cascade
   - `action-items-sync.test.ts` - Action items synchronization
-- `tests/e2e/` - Full user journey tests (coming soon)
+- `tests/e2e/` - Full user journey tests
+  - `onboarding-flow.test.ts` - Complete signup → onboarding → first message
 
 **Legacy Test Scripts** (being phased out):
 - `scripts/test-person-creation.ts` - Use `npm run test:person` instead
 - `scripts/test-is-self.ts` - Still useful for debugging self-reflection
 - `scripts/fix-self-person.ts` - Utility script, not a test
+
+### When to Run Tests (Quick Reference)
+
+| Situation | Command | Why |
+|-----------|---------|-----|
+| **After writing function logic** | `npm run test:unit` | Fast feedback on business logic |
+| **After changing API endpoint** | `npm run test:<function-name>` | Verify endpoint contract |
+| **Before committing** | Auto-runs via git hook | Prevent broken code |
+| **Before creating PR** | `npm run test` | Full validation |
+| **After merge conflicts** | `npm run test` | Ensure nothing broke |
+| **During active development** | `npm run test:watch` | Continuous feedback |
+
+### When to Update Tests
+
+| You Changed... | Update These Tests | How |
+|----------------|-------------------|-----|
+| **New Edge Function** | Unit + Integration | Create both test files |
+| **Function business logic** | Unit tests | Add/update test cases |
+| **API request/response** | Integration tests | Update request/response assertions |
+| **Database schema** | Test data factories | Update `createTest*` helpers |
+| **Onboarding flow** | E2E onboarding test | Add/modify onboarding steps |
+| **Fixed a bug** | Add regression test | Reproduce bug, then fix |
+
+### Automated Testing (Git Hooks)
+
+**Pre-commit Hook**: Automatically runs `npm run test:core` before every commit.
+
+```bash
+# Setup once:
+npm run setup:hooks
+
+# What happens:
+# 1. You commit: git commit -m "fix: something"
+# 2. Hook runs: npm run test:core
+# 3. If tests pass → commit succeeds ✅
+# 4. If tests fail → commit blocked ❌
+
+# Emergency bypass (use sparingly):
+git commit --no-verify -m "emergency fix"
+```
+
+### Test Maintenance Best Practices
+
+1. **Keep tests close to code** - Test structure mirrors function structure
+2. **Test behavior, not implementation** - Test what functions do, not how
+3. **One assertion per test** - Makes failures easier to diagnose
+4. **Fast feedback** - Unit tests <1s, integration <5s
+5. **Clean up after tests** - No leftover data in database
+6. **Update tests with code** - Tests are part of the feature, not separate
 
 ### CI/CD Integration
 
