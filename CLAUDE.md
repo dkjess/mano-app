@@ -603,30 +603,46 @@ struct Message: Codable, Identifiable {
 ### Backend Testing (Required)
 
 **Framework**: Deno's built-in testing framework
-**Location**: `backend/tests/`
+**Location**: `backend/tests/` (structured test suite)
 **Configuration**: `backend/tests/deno.json`
+
+**Test Directory Structure:**
+```
+backend/tests/
+├── unit/           # Pure unit tests with mocks (70% of tests)
+├── integration/    # API endpoint tests with real database (25% of tests)
+├── e2e/            # End-to-end user journey tests (5% of tests)
+└── helpers/        # Shared test utilities and mocks
+```
 
 **Test Commands:**
 ```bash
 cd backend
 
-# Unit tests (when available)
-npm run test                # Run all tests
-npm run test:watch          # Run tests in watch mode
-npm run test:coverage       # Run tests with coverage report
-npm run test:integration    # Run integration tests
+# Run all tests
+npm run test                    # All tests (unit + integration + e2e)
+npm run test:unit               # Only unit tests (fast, with mocks)
+npm run test:integration        # Only integration tests (requires Supabase running)
+npm run test:e2e                # Only end-to-end tests (full system)
+npm run test:watch              # Run tests in watch mode
+npm run test:coverage           # Generate coverage report
 
-# Integration test scripts
-deno run --allow-net --allow-env scripts/test-person-creation.ts  # Test person API
-swift scripts/test-swift-decode.swift                              # Test Swift decoder
-./scripts/test-e2e-person-creation.sh                             # End-to-end person creation
+# Run specific test suites
+npm run test:core               # Core functionality (person, chat, embeddings, delete-account)
+npm run test:person             # Person creation and management
+npm run test:chat               # Chat and messaging
+npm run test:embeddings         # Embedding generation
+npm run test:delete-account     # Account deletion
+npm run test:action-items       # Action items sync
 ```
 
 **Testing Requirements:**
-- **Unit Tests**: Every Edge Function MUST have unit tests
-- **Mocking**: Use MockSupabaseClient and MockAnthropicAPI from test-helpers.ts
-- **Coverage**: Aim for >80% code coverage on all new features
-- **Integration Tests**: Test actual HTTP endpoints when RUN_INTEGRATION_TESTS=true
+- **Unit Tests**: Every Edge Function MUST have unit tests in `tests/unit/`
+- **Integration Tests**: Every Edge Function endpoint MUST have integration tests in `tests/integration/`
+- **Mocking**: Use MockSupabaseClient and MockAnthropicAPI from `tests/helpers/test-helpers.ts`
+- **Coverage Goal**: >80% code coverage on backend (focus on unit tests)
+- **Integration Tests**: Test actual HTTP endpoints with real local Supabase
+- **E2E Tests**: Critical user journeys only (onboarding, chat flow, account deletion)
 
 **Test Structure:**
 ```typescript
@@ -679,41 +695,70 @@ xcodebuild test -project Mano.xcodeproj -scheme Mano -destination 'platform=iOS 
 
 **MANDATORY PROCESS**: Before any feature is considered complete:
 
-1. **Write Tests First** (TDD when possible)
-   - Write unit tests before implementation
+1. **Write Tests First** (TDD recommended)
+   - Write unit tests in `tests/unit/` before implementation
+   - Write integration tests in `tests/integration/` for API endpoints
    - Define expected behavior in tests
    - Use tests to guide implementation
 
 2. **Implement Feature**
    - Backend: Edge Functions with TypeScript
    - iOS: SwiftUI with modern iOS 26+ APIs
-   - Ensure all tests pass
+   - Ensure all tests pass: `npm run test`
 
 3. **Validate & Verify**
-   - Run full test suite: `npm run test`
+   - Run unit tests: `npm run test:unit` (fast, no external dependencies)
+   - Run integration tests: `npm run test:integration` (requires Supabase running)
+   - Run core test suite: `npm run test:core`
    - Check test coverage: `npm run test:coverage`
-   - Run integration tests if applicable
    - Manual testing with dev environment
 
 4. **Code Review Checklist**
-   - [ ] All tests passing
-   - [ ] New functionality has tests
+   - [ ] All tests passing (`npm run test`)
+   - [ ] New Edge Function has unit tests in `tests/unit/`
+   - [ ] New Edge Function has integration tests in `tests/integration/`
+   - [ ] Coverage >80% on new code
    - [ ] No deprecated APIs used
    - [ ] Follows architectural patterns
-   - [ ] Mock dependencies properly isolated
+   - [ ] Mock dependencies properly isolated (unit tests)
+   - [ ] Real Supabase tested (integration tests)
 
 ### Test Data & Environment
 
 **Test Database**: Uses local Supabase with test data
 **Test User**: `dev@mano.local` / `dev123456`
-**Mock APIs**: All external APIs (Anthropic, etc.) should be mocked in tests
+**Mock APIs**: All external APIs (Anthropic, etc.) should be mocked in **unit tests**
+**Real APIs**: Integration tests use real local Supabase, but may mock external APIs
 
-**Test Scripts Available:**
-- `backend/scripts/test-person-creation.ts` - Test person creation API with started_working_together field
-- `backend/scripts/test-swift-decode.swift` - Test Swift custom decoder for date-only strings
-- `backend/scripts/test-e2e-person-creation.sh` - End-to-end test (backend + Swift + iOS build)
-- `backend/scripts/test-is-self.ts` - Test self-reflection person functionality
-- `backend/scripts/fix-self-person.ts` - Fix missing self persons for existing users
+**Test Prerequisites:**
+```bash
+# 1. Start local Supabase
+supabase start
+
+# 2. Seed test data
+npm run seed:dev
+
+# 3. Start Edge Functions (for integration tests)
+supabase functions serve --env-file .env.local
+
+# 4. Run tests
+npm run test
+```
+
+**Structured Test Suites:**
+- `tests/unit/` - Fast, isolated tests with mocks
+- `tests/integration/` - API endpoint tests with real database
+  - `person.test.ts` - Person creation and management
+  - `chat.test.ts` - Chat and messaging functionality
+  - `create-embeddings.test.ts` - Embedding generation
+  - `delete-account.test.ts` - Account deletion cascade
+  - `action-items-sync.test.ts` - Action items synchronization
+- `tests/e2e/` - Full user journey tests (coming soon)
+
+**Legacy Test Scripts** (being phased out):
+- `scripts/test-person-creation.ts` - Use `npm run test:person` instead
+- `scripts/test-is-self.ts` - Still useful for debugging self-reflection
+- `scripts/fix-self-person.ts` - Utility script, not a test
 
 ### CI/CD Integration
 
