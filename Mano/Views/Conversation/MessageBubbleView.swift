@@ -107,11 +107,19 @@ struct MessageBubbleView: View {
                 Spacer()
             }
 
-            // Timestamp aligned to left
-            HStack {
+            // Timestamp and pin indicator aligned to left
+            HStack(spacing: 6) {
                 Text(timeString(from: message.createdAt))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+
+                // Show pin indicator if message is pinned
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                }
+
                 Spacer()
             }
         }

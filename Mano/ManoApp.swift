@@ -76,7 +76,7 @@ struct RootView: View {
                 OnboardingFlowView()
             } else {
                 if #available(iOS 26.0, *) {
-                    ManoHomeView()
+                    MainTabView()
                 } else {
                     // Fallback for iOS < 26
                     Text("iOS 26.0 or later required")

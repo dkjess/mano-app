@@ -1,6 +1,9 @@
 {
   "tasks": {
     "test": "deno test --allow-all --env tests/",
+    "test:unit": "deno test --allow-all --env tests/unit/",
+    "test:integration": "deno test --allow-all --env tests/integration/",
+    "test:e2e": "deno test --allow-all --env tests/e2e/",
     "test:watch": "deno test --allow-all --env --watch tests/",
     "test:coverage": "deno test --allow-all --env --coverage=coverage tests/",
     "coverage": "deno coverage coverage --lcov > coverage/lcov.info"
@@ -8,7 +11,8 @@
   "imports": {
     "@std/testing": "https://deno.land/std@0.208.0/testing/mod.ts",
     "@std/assert": "https://deno.land/std@0.208.0/assert/mod.ts",
-    "@anthropic-ai/sdk": "https://esm.sh/@anthropic-ai/sdk@0.24.3"
+    "@anthropic-ai/sdk": "https://esm.sh/@anthropic-ai/sdk@0.24.3",
+    "@test-helpers": "./helpers/test-helpers.ts"
   },
   "env": {
     "SUPABASE_URL": "http://127.0.0.1:54321",
