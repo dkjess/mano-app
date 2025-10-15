@@ -27,6 +27,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - Maintain documentation and deployment processes
 - **Workflow:** Build → Test → Create PR → Await approval → Auto-deploy on merge
 
+**MANDATORY Testing Checklist Before Creating PRs:**
+1. ✅ Run `./scripts/build-test.sh` - Verify iOS build succeeds
+2. ✅ Run `npm run seed:dev` - Verify database seeding succeeds
+3. ✅ Manually test the feature end-to-end locally
+4. ✅ Check logs for any errors or warnings
+5. ✅ Test on physical device via ngrok (for iOS changes)
+6. ✅ ONLY create PR after ALL tests pass
+
+**Critical Rule:** If seed script fails or local environment is broken, DO NOT create PR. Fix the issues first. A failing seed script is a RED FLAG that something is broken.
+
 ### Collaboration Principles
 - **Jess writes no code** - All technical implementation is Claude's responsibility
 - **Jess reviews everything** - All changes go through PR review and approval
