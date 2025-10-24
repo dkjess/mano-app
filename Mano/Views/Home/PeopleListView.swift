@@ -20,19 +20,35 @@ struct PeopleListView: View {
     @State private var showingDeleteConfirmation = false
     @State private var showEnvironmentPicker = false
     @State private var showingDeleteAccountConfirmation = false
+    @State private var navigationPath: [NavigationDestination] = []
     @ObservedObject private var supabase = SupabaseManager.shared
     @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
-    
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             mainContent
                 .navigationTitle("People")
-                .navigationDestination(item: $navigateToNewPerson) { person in
-                    ConversationView(person: person)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button(action: {
+                            navigationPath.append(.pinnedList)
+                        }) {
+                            Label("Pinned", systemImage: "pin.fill")
+                        }
+                    }
+                }
+                .navigationDestination(for: NavigationDestination.self) { destination in
+                    destinationView(for: destination)
                 }
                 .task {
                     await loadPeople()
                 }
+            .onChange(of: navigateToNewPerson) { oldValue, newValue in
+                if let person = newValue {
+                    navigationPath.append(.person(person))
+                    navigateToNewPerson = nil
+                }
+            }
             .sheet(isPresented: $showingAddPerson) {
                 AddPersonView(
                     isPresented: $showingAddPerson,
@@ -99,6 +115,20 @@ struct PeopleListView: View {
             } message: {
                 Text("Are you sure you want to permanently delete your account? This will remove all your data, conversations, and people. This action cannot be undone.")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func destinationView(for destination: NavigationDestination) -> some View {
+        switch destination {
+        case .pinnedList:
+            PinnedView(onNavigateToConversation: { messageId, personId, conversationId in
+                navigationPath.append(.pinnedConversation(messageId: messageId, personId: personId, conversationId: conversationId))
+            })
+        case .pinnedConversation(let messageId, let personId, let conversationId):
+            ConversationDetailViewWrapper(messageId: messageId, personId: personId, conversationId: conversationId)
+        case .person(let person):
+            ConversationView(person: person)
         }
     }
 
@@ -226,9 +256,12 @@ struct PeopleListView: View {
                 }
             )
         } else {
-            NavigationLink(destination: ConversationView(person: person)) {
+            Button(action: {
+                navigationPath.append(.person(person))
+            }) {
                 PersonRowView(person: person)
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -421,6 +454,14 @@ struct PersonEditRowView: View {
         }
         .padding(.vertical, 2)
     }
+}
+
+// MARK: - Navigation Destination Types
+
+enum NavigationDestination: Hashable {
+    case pinnedList
+    case pinnedConversation(messageId: UUID, personId: UUID, conversationId: UUID)
+    case person(Person)
 }
 
 @available(iOS 26.0, *)

@@ -16,18 +16,54 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C8165B5F2E9D842F00C0D5ED /* Mano iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Mano iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C86303672E64A9A50011C15F /* Mano.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mano.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		C8165B5A2E9D830E00C0D5ED /* Exceptions for "Mano" folder in "Mano" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = C86303662E64A9A50011C15F /* Mano */;
+		};
+		C8165B6B2E9D84A100C0D5ED /* Exceptions for "Mano iOS" folder in "Mano iOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Mano-iOS-Info.plist",
+			);
+			target = C8165B5E2E9D842F00C0D5ED /* Mano iOS */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		C8165B602E9D842F00C0D5ED /* Mano iOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C8165B6B2E9D84A100C0D5ED /* Exceptions for "Mano iOS" folder in "Mano iOS" target */,
+			);
+			path = "Mano iOS";
+			sourceTree = "<group>";
+		};
 		C86303692E64A9A50011C15F /* Mano */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				C8165B5A2E9D830E00C0D5ED /* Exceptions for "Mano" folder in "Mano" target */,
+			);
 			path = Mano;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		C8165B5C2E9D842F00C0D5ED /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C86303642E64A9A50011C15F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -48,6 +84,7 @@
 			isa = PBXGroup;
 			children = (
 				C86303692E64A9A50011C15F /* Mano */,
+				C8165B602E9D842F00C0D5ED /* Mano iOS */,
 				C86305FA2E64E02D0011C15F /* Frameworks */,
 				C86303682E64A9A50011C15F /* Products */,
 			);
@@ -57,6 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				C86303672E64A9A50011C15F /* Mano.app */,
+				C8165B5F2E9D842F00C0D5ED /* Mano iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -71,6 +109,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		C8165B5E2E9D842F00C0D5ED /* Mano iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C8165B672E9D843000C0D5ED /* Build configuration list for PBXNativeTarget "Mano iOS" */;
+			buildPhases = (
+				C8165B5B2E9D842F00C0D5ED /* Sources */,
+				C8165B5C2E9D842F00C0D5ED /* Frameworks */,
+				C8165B5D2E9D842F00C0D5ED /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				C8165B602E9D842F00C0D5ED /* Mano iOS */,
+			);
+			name = "Mano iOS";
+			packageProductDependencies = (
+			);
+			productName = "Mano iOS";
+			productReference = C8165B5F2E9D842F00C0D5ED /* Mano iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
 		C86303662E64A9A50011C15F /* Mano */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C86303722E64A9A70011C15F /* Build configuration list for PBXNativeTarget "Mano" */;
@@ -109,6 +169,9 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					C8165B5E2E9D842F00C0D5ED = {
+						CreatedOnToolsVersion = 26.0.1;
+					};
 					C86303662E64A9A50011C15F = {
 						CreatedOnToolsVersion = 26.0;
 					};
@@ -132,11 +195,19 @@
 			projectRoot = "";
 			targets = (
 				C86303662E64A9A50011C15F /* Mano */,
+				C8165B5E2E9D842F00C0D5ED /* Mano iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		C8165B5D2E9D842F00C0D5ED /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C86303652E64A9A50011C15F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -147,6 +218,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		C8165B5B2E9D842F00C0D5ED /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C86303632E64A9A50011C15F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -157,6 +235,81 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		C8165B682E9D843000C0D5ED /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZJRL7SVU3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Mano-iOS-Info.plist";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ai.supermano.Mano-iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C8165B692E9D843000C0D5ED /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = DZJRL7SVU3;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Mano-iOS-Info.plist";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "ai.supermano.Mano-iOS";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		C86303702E64A9A70011C15F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -284,6 +437,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Mano/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -294,7 +450,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
@@ -328,6 +484,9 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Mano/Info.plist;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
@@ -338,7 +497,7 @@
 				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
@@ -362,6 +521,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		C8165B672E9D843000C0D5ED /* Build configuration list for PBXNativeTarget "Mano iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C8165B682E9D843000C0D5ED /* Debug */,
+				C8165B692E9D843000C0D5ED /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C86303622E64A9A50011C15F /* Build configuration list for PBXProject "Mano" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
