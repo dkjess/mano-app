@@ -177,25 +177,31 @@ struct ConversationView: View {
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message, isStreaming: false)
-                                .id(message.id)
-                                .scaleEffect(newMessageIds.contains(message.id) ? 0.8 : 1.0)
-                                .opacity(newMessageIds.contains(message.id) ? 0 : 1)
-                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
-                                .onAppear {
-                                    if newMessageIds.contains(message.id) {
-                                        _ = withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                            newMessageIds.remove(message.id)
-                                        }
+                            Group {
+                                if message.isUser {
+                                    UserMessageView(message: message)
+                                } else {
+                                    AssistantMessageView(message: message)
+                                }
+                            }
+                            .id(message.id)
+                            .scaleEffect(newMessageIds.contains(message.id) ? 0.8 : 1.0)
+                            .opacity(newMessageIds.contains(message.id) ? 0 : 1)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
+                            .onAppear {
+                                if newMessageIds.contains(message.id) {
+                                    _ = withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                        newMessageIds.remove(message.id)
                                     }
                                 }
+                            }
                         }
                         
                         // Show only ONE thinking/loading state at a time
                         if let streamingMsg = streamingMessage {
                             if !streamingText.isEmpty {
                                 // Streaming content - show the actual message with progressive reveal
-                                MessageBubbleView(
+                                AssistantMessageView(
                                     message: Message(
                                         id: streamingMsg.id,
                                         userId: streamingMsg.userId,
@@ -205,8 +211,7 @@ struct ConversationView: View {
                                         topicId: streamingMsg.topicId,
                                         conversationId: streamingMsg.conversationId,
                                         createdAt: streamingMsg.createdAt
-                                    ),
-                                    isStreaming: true
+                                    )
                                 )
                                 .id("streaming")
                             } else if let contextualMessage = contextualThinkingMessage,
