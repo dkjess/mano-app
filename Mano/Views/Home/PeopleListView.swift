@@ -26,7 +26,46 @@ struct PeopleListView: View {
     var body: some View {
         NavigationStack {
             mainContent
-                .navigationBarHidden(true)
+                .navigationTitle("People")
+                .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Menu {
+                            if !people.isEmpty {
+                                Button(action: {
+                                    isEditMode.toggle()
+                                }) {
+                                    Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
+                                }
+                                Divider()
+                            }
+
+                            if environmentManager.currentEnvironment == .local {
+                                Button(action: { showEnvironmentPicker = true }) {
+                                    Label("Switch Environment", systemImage: "network")
+                                }
+                            }
+
+                            Button(role: .destructive, action: {
+                                showingDeleteAccountConfirmation = true
+                            }) {
+                                Label("Delete Account", systemImage: "trash")
+                            }
+
+                            Button(action: {
+                                Task {
+                                    try? await supabase.auth.signOut()
+                                }
+                            }) {
+                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            }
+                        } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.secondaryText)
+                        }
+                    }
+                }
                 .navigationDestination(item: $navigateToNewPerson) { person in
                     ConversationView(person: person)
                 }
@@ -134,103 +173,49 @@ struct PeopleListView: View {
     }
 
     private var peopleListView: some View {
-        VStack(spacing: 0) {
-            // Header with settings icon
-            HStack {
-                Spacer()
-
-                Menu {
-                    if !people.isEmpty {
-                        Button(action: {
-                            isEditMode.toggle()
-                        }) {
-                            Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
-                        }
-                        Divider()
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                // Self person section
+                ForEach(people.filter { $0.isSelf == true }) { person in
+                    NavigationLink(destination: ConversationView(person: person)) {
+                        PersonRow(person: person)
                     }
-
-                    if environmentManager.currentEnvironment == .local {
-                        Button(action: { showEnvironmentPicker = true }) {
-                            Label("Switch Environment", systemImage: "network")
-                        }
-                    }
-
-                    Button(role: .destructive, action: {
-                        showingDeleteAccountConfirmation = true
-                    }) {
-                        Label("Delete Account", systemImage: "trash")
-                    }
-
-                    Button(action: {
-                        Task {
-                            try? await supabase.auth.signOut()
-                        }
-                    }) {
-                        Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                    }
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.system(size: 20))
-                        .foregroundColor(.secondaryText)
+                    .buttonStyle(PlainButtonStyle())
                 }
-                .buttonStyle(PlainButtonStyle())
-            }
-            .padding(.horizontal, Spacing.lg)
-            .padding(.top, Spacing.sm)
 
-            // "People" title
-            Text("People")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundColor(.primaryText)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // Section header
+                Text("My People")
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundColor(.secondaryText)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, Spacing.lg)
+                    .padding(.top, Spacing.xl)
+                    .padding(.bottom, Spacing.md)
+
+                // Team people rows
+                ForEach(people.filter { $0.isSelf != true }) { person in
+                    NavigationLink(destination: ConversationView(person: person)) {
+                        PersonRow(person: person)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+
+                // Add Person button (scrolls with list)
+                Button {
+                    showingAddPerson = true
+                } label: {
+                    HStack(spacing: Spacing.sm) {
+                        Image(systemName: "person.badge.plus")
+                            .font(.system(size: 18, weight: .semibold))
+                        Text("Add Person")
+                            .font(.system(size: 17, weight: .semibold))
+                    }
+                }
+                .buttonStyle(PrimaryButtonStyle())
                 .padding(.horizontal, Spacing.lg)
                 .padding(.top, Spacing.xl)
-                .padding(.bottom, Spacing.lg)
-
-            // People list
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    // Self person section
-                    ForEach(people.filter { $0.isSelf == true }) { person in
-                        NavigationLink(destination: ConversationView(person: person)) {
-                            PersonRow(person: person)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-
-                    // Section header
-                    Text("My People")
-                        .font(.system(size: 22, weight: .semibold))
-                        .foregroundColor(.secondaryText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, Spacing.lg)
-                        .padding(.top, Spacing.xl)
-                        .padding(.bottom, Spacing.md)
-
-                    // Team people rows
-                    ForEach(people.filter { $0.isSelf != true }) { person in
-                        NavigationLink(destination: ConversationView(person: person)) {
-                            PersonRow(person: person)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                    }
-                }
+                .padding(.bottom, Spacing.xl)
             }
-
-            // Add Person button at bottom
-            Button {
-                showingAddPerson = true
-            } label: {
-                HStack(spacing: Spacing.sm) {
-                    Image(systemName: "person.badge.plus")
-                        .font(.system(size: 18, weight: .semibold))
-                    Text("Add Person")
-                        .font(.system(size: 17, weight: .semibold))
-                }
-            }
-            .buttonStyle(PrimaryButtonStyle())
-            .padding(.horizontal, Spacing.lg)
-            .padding(.vertical, Spacing.xl)
         }
         .background(Color.almostWhite)
     }
