@@ -12,6 +12,7 @@ import Auth
 import AppKit
 #endif
 
+@available(iOS 26.0, *)
 struct ConversationView: View {
     let person: Person
     @State private var messages: [Message] = []
@@ -39,7 +40,20 @@ struct ConversationView: View {
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
     }
-    
+
+    var inputAreaHeight: CGFloat {
+        // Approximate height for input area to add padding to messages
+        return 100
+    }
+
+    func handleTapOutside() {
+        // Dismiss keyboard when tapping outside
+        isInputFocused = false
+
+        // Additional logic for returning to idle state would be handled by the input component
+        // since it manages its own state
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if isLoading {
@@ -50,6 +64,7 @@ struct ConversationView: View {
                 conversationContent
             }
         }
+        .background(ManoColors.almostWhite)
         .navigationTitle(person.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
@@ -126,7 +141,7 @@ struct ConversationView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             // Empty state content
             VStack {
                 Spacer()
@@ -137,26 +152,26 @@ struct ConversationView: View {
                 )
                 Spacer()
             }
+            .padding(.bottom, inputAreaHeight)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                handleTapOutside()
+            }
 
-            // Input at bottom (no longer floating)
-            InputComposer(
+            // Voice-first message input component (fixed at bottom)
+            MessageInputComponent(
                 person: person,
-                messageText: $messageText,
-                isSending: $isSending,
-                isInputFocused: _isInputFocused,
-                onSendMessage: sendMessage
+                onSendMessage: { text in
+                    messageText = text
+                    sendMessage()
+                }
             )
         }
-        .onAppear {
-            // Auto-focus input when entering empty conversation
-            DispatchQueue.main.asyncAfter(deadline: .now() + Timeouts.autoFocus) {
-                isInputFocused = true
-            }
-        }
+        .ignoresSafeArea(.keyboard)
     }
     
     private var conversationContent: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             // Main conversation area
             ScrollViewReader { proxy in
                 ScrollView {
@@ -210,7 +225,11 @@ struct ConversationView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 0)
+                    .padding(.bottom, inputAreaHeight)  // Space for input component
+                }
+                .contentShape(Rectangle())  // Make entire area tappable
+                .onTapGesture {
+                    handleTapOutside()
                 }
                 .onAppear {
                     if let lastMessage = messages.last {
@@ -289,11 +308,6 @@ struct ConversationView: View {
                         }
                     }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    // Dismiss keyboard and collapse input when tapping conversation
-                    isInputFocused = false
-                }
                 .simultaneousGesture(
                     DragGesture()
                         .onChanged { _ in
@@ -308,17 +322,18 @@ struct ConversationView: View {
                 )
             }
 
-            // Input composer at bottom (no longer floating/overlapping)
-            InputComposer(
+            // Voice-first message input component (fixed at bottom)
+            MessageInputComponent(
                 person: person,
-                messageText: $messageText,
-                isSending: $isSending,
-                isInputFocused: _isInputFocused,
-                onSendMessage: sendMessage
+                onSendMessage: { text in
+                    messageText = text
+                    sendMessage()
+                }
             )
         }
+        .ignoresSafeArea(.keyboard)  // Let keyboard push content
     }
-    
+
     // MARK: - Helper Methods
     
     private func loadMessages() async {
@@ -593,6 +608,7 @@ struct ConversationView: View {
 // Note: ConversationHistoryView, ConversationHistoryRow, ConversationDetailView,
 // and NewConversationSheet have been extracted to separate files in Views/Conversation/
 
+@available(iOS 26.0, *)
 #Preview {
     NavigationStack {
         ConversationView(
