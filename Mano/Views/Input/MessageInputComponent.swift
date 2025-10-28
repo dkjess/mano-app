@@ -237,15 +237,29 @@ struct MessageInputComponent: View {
                 .cornerRadius(CornerRadius.input)
                 .scrollContentBackground(.hidden)
 
-            // Button row
+            // Button row - SEND FIRST, MIC LAST
             HStack(spacing: Spacing.md) {
-                // Small mic button (40×40px, NO PULSE)
+                // Send button (expands to fill available space)
+                Button {
+                    sendMessage()
+                } label: {
+                    Text("Send")
+                        .font(.system(size: 16, weight: .semibold))
+                        .foregroundColor(.white)
+                }
+                .frame(maxWidth: .infinity)  // Expands to fill
+                .frame(height: 40)
+                .background(messageText.isEmpty ? Color.secondaryText : Color.forestGreen)
+                .cornerRadius(CornerRadius.button)
+                .disabled(messageText.isEmpty)
+
+                // Small mic button (40×40px, NO PULSE) - Fixed on right
                 Button {} label: {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 18))
                         .foregroundColor(.white)
                 }
-                .frame(width: 40, height: 40)  // 40px in typing mode
+                .frame(width: 40, height: 40)  // Fixed size on right
                 .background(Color.warmYellow)
                 .cornerRadius(CornerRadius.button)
                 // NO PulseModifier - static in typing mode
@@ -271,20 +285,6 @@ struct MessageInputComponent: View {
                         }
                     }
                 }
-
-                // Send button
-                Button {
-                    sendMessage()
-                } label: {
-                    Text("Send")
-                        .font(.system(size: 16, weight: .semibold))
-                        .foregroundColor(.white)
-                }
-                .frame(maxWidth: .infinity)
-                .frame(height: 40)
-                .background(messageText.isEmpty ? Color.secondaryText : Color.forestGreen)
-                .cornerRadius(CornerRadius.button)
-                .disabled(messageText.isEmpty)
             }
         }
         .padding(Spacing.base)
@@ -297,6 +297,7 @@ struct MessageInputComponent: View {
             alignment: .top
         )
         .shadow(color: Color.black.opacity(0.12), radius: 24, x: 0, y: -4)
+        .padding(.bottom, keyboardVisible ? 0 : Spacing.md)  // NO gap when keyboard visible
     }
 
     // MARK: - Actions
