@@ -46,8 +46,7 @@ struct MessageInputComponent: View {
 
             case .typing(let keyboardVisible):
                 typingInputView(keyboardVisible: keyboardVisible)
-                    .offset(y: keyboardVisible ? -keyboardHeight : 0)
-                    .animation(.easeOut(duration: 0.25), value: keyboardVisible)
+                // NO offset - let system handle keyboard avoidance
                 // NO horizontal padding - full width
             }
         }
