@@ -19,7 +19,6 @@ struct PinnedView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var realtimeTask: Task<Void, Never>?
-    @State private var selectedConversation: (messageId: UUID, personId: UUID, conversationId: UUID)?
 
     var body: some View {
         Group {
@@ -49,16 +48,6 @@ struct PinnedView: View {
             await loadPinnedMessages()
             await pinnedManager.refresh()
         }
-        .sheet(item: Binding(
-            get: { selectedConversation.map { ConversationIdentifier(messageId: $0.messageId, personId: $0.personId, conversationId: $0.conversationId) } },
-            set: { selectedConversation = $0.map { ($0.messageId, $0.personId, $0.conversationId) } }
-        )) { conversation in
-            ConversationDetailViewWrapper(
-                messageId: conversation.messageId,
-                personId: conversation.personId,
-                conversationId: conversation.conversationId
-            )
-        }
         .onDisappear {
             realtimeTask?.cancel()
         }
@@ -78,12 +67,13 @@ struct PinnedView: View {
                 Group {
                     if let personId = pin.personId, let conversationId = pin.conversationId {
                         // Message has conversation - enable navigation with scrolling to message
-                        Button(action: {
-                            selectedConversation = (messageId: pin.messageId, personId: personId, conversationId: conversationId)
-                        }) {
+                        NavigationLink(value: ConversationIdentifier(
+                            messageId: pin.messageId,
+                            personId: personId,
+                            conversationId: conversationId
+                        )) {
                             PinnedMessageRow(pinnedMessage: pin)
                         }
-                        .buttonStyle(.plain)
                     } else {
                         // Old message without conversation - show but no navigation
                         PinnedMessageRow(pinnedMessage: pin)
@@ -109,6 +99,13 @@ struct PinnedView: View {
             }
         }
         .listStyle(.plain)
+        .navigationDestination(for: ConversationIdentifier.self) { conversation in
+            ConversationDetailViewWrapper(
+                messageId: conversation.messageId,
+                personId: conversation.personId,
+                conversationId: conversation.conversationId
+            )
+        }
     }
 
     private func loadPinnedMessages() async {
@@ -365,7 +362,7 @@ struct ConversationDetailViewWrapper: View {
 
 // MARK: - Helper Types
 
-struct ConversationIdentifier: Identifiable {
+struct ConversationIdentifier: Identifiable, Hashable {
     let id: UUID
     let messageId: UUID
     let personId: UUID
