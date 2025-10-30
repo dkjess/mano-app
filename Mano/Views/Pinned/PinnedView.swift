@@ -12,8 +12,6 @@ import Supabase
 private let NSURLErrorCancelled = -999
 
 struct PinnedView: View {
-    let onNavigateToConversation: (UUID, UUID, UUID) -> Void  // messageId, personId, conversationId
-
     private let pinnedService = PinnedMessageService.shared
     private let supabase = SupabaseManager.shared.client
     @ObservedObject private var pinnedManager = PinnedMessagesManager.shared
@@ -21,6 +19,7 @@ struct PinnedView: View {
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var realtimeTask: Task<Void, Never>?
+    @State private var selectedConversation: (messageId: UUID, personId: UUID, conversationId: UUID)?
 
     var body: some View {
         Group {
@@ -50,6 +49,16 @@ struct PinnedView: View {
             await loadPinnedMessages()
             await pinnedManager.refresh()
         }
+        .sheet(item: Binding(
+            get: { selectedConversation.map { ConversationIdentifier(messageId: $0.messageId, personId: $0.personId, conversationId: $0.conversationId) } },
+            set: { selectedConversation = $0.map { ($0.messageId, $0.personId, $0.conversationId) } }
+        )) { conversation in
+            ConversationDetailViewWrapper(
+                messageId: conversation.messageId,
+                personId: conversation.personId,
+                conversationId: conversation.conversationId
+            )
+        }
         .onDisappear {
             realtimeTask?.cancel()
         }
@@ -70,7 +79,7 @@ struct PinnedView: View {
                     if let personId = pin.personId, let conversationId = pin.conversationId {
                         // Message has conversation - enable navigation with scrolling to message
                         Button(action: {
-                            onNavigateToConversation(pin.messageId, personId, conversationId)
+                            selectedConversation = (messageId: pin.messageId, personId: personId, conversationId: conversationId)
                         }) {
                             PinnedMessageRow(pinnedMessage: pin)
                         }
@@ -354,6 +363,22 @@ struct ConversationDetailViewWrapper: View {
     }
 }
 
+// MARK: - Helper Types
+
+struct ConversationIdentifier: Identifiable {
+    let id: UUID
+    let messageId: UUID
+    let personId: UUID
+    let conversationId: UUID
+
+    init(messageId: UUID, personId: UUID, conversationId: UUID) {
+        self.id = conversationId
+        self.messageId = messageId
+        self.personId = personId
+        self.conversationId = conversationId
+    }
+}
+
 #Preview {
-    PinnedView(onNavigateToConversation: { _, _, _ in })
+    PinnedView()
 }

@@ -21,11 +21,13 @@ struct MainTabView: View {
                 .tag(0)
 
             // Pinned tab
-            PinnedView()
-                .tabItem {
-                    Label("Pinned", systemImage: "pin")
-                }
-                .tag(1)
+            NavigationStack {
+                PinnedView()
+            }
+            .tabItem {
+                Label("Pinned", systemImage: "pin")
+            }
+            .tag(1)
         }
     }
 }
