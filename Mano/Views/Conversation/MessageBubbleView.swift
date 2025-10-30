@@ -10,14 +10,19 @@ import SwiftUI
 struct MessageBubbleView: View {
     let message: Message
     let isStreaming: Bool
+    let isHighlighted: Bool
 
-    private let pinnedService = PinnedMessageService.shared
-    @State private var isPinned = false
+    @ObservedObject private var pinnedManager = PinnedMessagesManager.shared
     @State private var showingPinConfirmation = false
 
-    init(message: Message, isStreaming: Bool = false) {
+    init(message: Message, isStreaming: Bool = false, isHighlighted: Bool = false) {
         self.message = message
         self.isStreaming = isStreaming
+        self.isHighlighted = isHighlighted
+    }
+
+    private var isPinned: Bool {
+        pinnedManager.isPinned(message.id)
     }
 
     var body: some View {
@@ -27,35 +32,37 @@ struct MessageBubbleView: View {
                 userMessageView
             } else {
                 // AI messages: Full-width, no bubble with context menu
-                aiMessageView
-                    .contextMenu {
-                        // Pin/Unpin button
-                        Button {
-                            Task {
-                                await togglePin()
+                // Only show context menu for non-streaming messages (streaming messages aren't in DB yet)
+                if isStreaming {
+                    aiMessageView
+                } else {
+                    aiMessageView
+                        .contextMenu {
+                            // Pin/Unpin button
+                            Button {
+                                Task {
+                                    await togglePin()
+                                }
+                            } label: {
+                                Label(isPinned ? "Unpin Advice" : "Pin Advice", systemImage: isPinned ? "pin.slash" : "pin")
                             }
-                        } label: {
-                            Label(isPinned ? "Unpin Advice" : "Pin Advice", systemImage: isPinned ? "pin.slash" : "pin")
-                        }
 
-                        // Copy button
-                        Button {
-                            UIPasteboard.general.string = message.content
-                        } label: {
-                            Label("Copy", systemImage: "doc.on.doc")
-                        }
+                            // Copy button
+                            Button {
+                                UIPasteboard.general.string = message.content
+                            } label: {
+                                Label("Copy", systemImage: "doc.on.doc")
+                            }
 
-                        // Share button
-                        Button {
-                            shareMessage()
-                        } label: {
-                            Label("Share", systemImage: "square.and.arrow.up")
+                            // Share button
+                            Button {
+                                shareMessage()
+                            } label: {
+                                Label("Share", systemImage: "square.and.arrow.up")
+                            }
                         }
-                    }
+                }
             }
-        }
-        .task {
-            await checkIfPinned()
         }
     }
 
@@ -107,16 +114,32 @@ struct MessageBubbleView: View {
                 Spacer()
             }
 
-            // Timestamp aligned to left
-            HStack {
+            // Timestamp and pin indicator aligned to left
+            HStack(spacing: 6) {
                 Text(timeString(from: message.createdAt))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
+
+                // Show pin indicator if message is pinned
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.blue)
+                }
+
                 Spacer()
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(isHighlighted ? Color.blue.opacity(0.1) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(isHighlighted ? Color.blue : Color.clear, lineWidth: 2)
+        )
     }
     
     private func timeString(from date: Date) -> String {
@@ -136,27 +159,26 @@ struct MessageBubbleView: View {
 
     // MARK: - Pin Management
 
-    private func checkIfPinned() async {
-        do {
-            isPinned = try await pinnedService.isMessagePinned(messageId: message.id)
-        } catch {
-            print("❌ Error checking pin status: \(error)")
-        }
-    }
-
     private func togglePin() async {
+        print("🔴 [MessageBubble] togglePin called, isPinned: \(isPinned)")
+        print("🔴 [MessageBubble] Message ID: \(message.id)")
+        print("🔴 [MessageBubble] Person ID: \(String(describing: message.personId))")
+        print("🔴 [MessageBubble] Topic ID: \(String(describing: message.topicId))")
+
         do {
             if isPinned {
-                try await pinnedService.unpinMessage(messageId: message.id)
-                isPinned = false
+                print("🔴 [MessageBubble] Attempting to unpin...")
+                try await pinnedManager.unpinMessage(messageId: message.id)
+                print("✅ [MessageBubble] Successfully unpinned")
             } else {
-                try await pinnedService.pinMessage(
+                print("🔴 [MessageBubble] Attempting to pin...")
+                try await pinnedManager.pinMessage(
                     messageId: message.id,
                     personId: message.personId,
                     topicId: message.topicId
                 )
-                isPinned = true
                 showingPinConfirmation = true
+                print("✅ [MessageBubble] Successfully pinned")
 
                 // Add haptic feedback
                 #if os(iOS)
@@ -165,7 +187,13 @@ struct MessageBubbleView: View {
                 #endif
             }
         } catch {
-            print("❌ Error toggling pin: \(error)")
+            print("❌ [MessageBubble] Error toggling pin: \(error)")
+            print("❌ [MessageBubble] Error details: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("❌ [MessageBubble] Error domain: \(nsError.domain)")
+                print("❌ [MessageBubble] Error code: \(nsError.code)")
+                print("❌ [MessageBubble] Error userInfo: \(nsError.userInfo)")
+            }
         }
     }
 

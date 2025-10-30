@@ -48,7 +48,8 @@ struct ConversationHistoryView: View {
                 ConversationDetailView(
                     conversation: conversation,
                     person: person,
-                    messages: conversationMessages[conversation.id] ?? []
+                    messages: conversationMessages[conversation.id] ?? [],
+                    highlightedMessageId: nil
                 )
             }
         }

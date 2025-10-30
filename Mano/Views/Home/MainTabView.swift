@@ -9,23 +9,26 @@ import SwiftUI
 
 @available(iOS 26.0, *)
 struct MainTabView: View {
-    @State private var selectedTab = 0
-
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // People tab
+        TabView {
             ManoHomeView()
                 .tabItem {
-                    Label("People", systemImage: "person.2")
+                    Label("People", systemImage: "person.fill")
                 }
-                .tag(0)
 
-            // Pinned tab
-            PinnedView()
-                .tabItem {
-                    Label("Pinned", systemImage: "pin")
-                }
-                .tag(1)
+            NavigationStack {
+                PinnedView()
+            }
+            .tabItem {
+                Label("Pins", systemImage: "pin.fill")
+            }
+
+            NavigationStack {
+                OKRsView()
+            }
+            .tabItem {
+                Label("OKRs", systemImage: "target")
+            }
         }
     }
 }

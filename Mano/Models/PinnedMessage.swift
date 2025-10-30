@@ -14,6 +14,7 @@ struct PinnedMessage: Codable, Identifiable, Hashable {
     let personId: UUID?
     let topicId: UUID?
     let note: String?
+    let title: String?
     let pinnedAt: Date
     let createdAt: Date
     let updatedAt: Date
@@ -21,6 +22,7 @@ struct PinnedMessage: Codable, Identifiable, Hashable {
     // Joined data from messages table
     var messageContent: String?
     var messageCreatedAt: Date?
+    var conversationId: UUID?
 
     // Joined data from people table
     var personName: String?
@@ -36,11 +38,13 @@ struct PinnedMessage: Codable, Identifiable, Hashable {
         case personId = "person_id"
         case topicId = "topic_id"
         case note
+        case title
         case pinnedAt = "pinned_at"
         case createdAt = "created_at"
         case updatedAt = "updated_at"
         case messageContent = "message_content"
         case messageCreatedAt = "message_created_at"
+        case conversationId = "conversation_id"
         case personName = "person_name"
         case personEmoji = "person_emoji"
         case topicTitle = "topic_title"

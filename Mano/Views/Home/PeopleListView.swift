@@ -18,32 +18,25 @@ struct PeopleListView: View {
     @State private var personToEdit: Person? = nil
     @State private var personToDelete: Person? = nil
     @State private var showingDeleteConfirmation = false
+    @State private var navigationPath: [NavigationDestination] = []
     @State private var showEnvironmentPicker = false
     @State private var showingDeleteAccountConfirmation = false
     @ObservedObject private var supabase = SupabaseManager.shared
     @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
-    
+
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             mainContent
                 .navigationTitle("People")
                 .navigationBarTitleDisplayMode(.large)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                    ToolbarItem(placement: .primaryAction) {
                         Menu {
-                            if !people.isEmpty {
-                                Button(action: {
-                                    isEditMode.toggle()
-                                }) {
-                                    Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
-                                }
-                                Divider()
-                            }
-
                             if environmentManager.currentEnvironment == .local {
                                 Button(action: { showEnvironmentPicker = true }) {
                                     Label("Switch Environment", systemImage: "network")
                                 }
+                                Divider()
                             }
 
                             Button(role: .destructive, action: {
@@ -60,11 +53,12 @@ struct PeopleListView: View {
                                 Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
                             }
                         } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.secondaryText)
+                            Image(systemName: "gearshape")
                         }
                     }
+                }
+                .navigationDestination(for: NavigationDestination.self) { destination in
+                    destinationView(for: destination)
                 }
                 .navigationDestination(item: $navigateToNewPerson) { person in
                     ConversationView(person: person)
@@ -72,6 +66,12 @@ struct PeopleListView: View {
                 .task {
                     await loadPeople()
                 }
+            .onChange(of: navigateToNewPerson) { oldValue, newValue in
+                if let person = newValue {
+                    navigationPath.append(.person(person))
+                    navigateToNewPerson = nil
+                }
+            }
             .sheet(isPresented: $showingAddPerson) {
                 AddPersonView(
                     isPresented: $showingAddPerson,
@@ -81,9 +81,6 @@ struct PeopleListView: View {
                         navigateToNewPerson = newPerson
                     }
                 )
-            }
-            .sheet(isPresented: $showEnvironmentPicker) {
-                EnvironmentPickerView()
             }
             .sheet(item: $personToEdit) { person in
                 if person.isSelf == true {
@@ -128,6 +125,9 @@ struct PeopleListView: View {
             } message: { person in
                 Text("Are you sure you want to delete \(person.name)? This will permanently remove all conversations and data related to this person. This action cannot be undone.")
             }
+            .sheet(isPresented: $showEnvironmentPicker) {
+                EnvironmentPickerView()
+            }
             .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
                 Button("Cancel", role: .cancel) { }
                 Button("Delete Account", role: .destructive) {
@@ -138,6 +138,14 @@ struct PeopleListView: View {
             } message: {
                 Text("Are you sure you want to permanently delete your account? This will remove all your data, conversations, and people. This action cannot be undone.")
             }
+        }
+    }
+
+    @ViewBuilder
+    private func destinationView(for destination: NavigationDestination) -> some View {
+        switch destination {
+        case .person(let person):
+            ConversationView(person: person)
         }
     }
 
@@ -236,9 +244,12 @@ struct PeopleListView: View {
                 }
             )
         } else {
-            NavigationLink(destination: ConversationView(person: person)) {
+            Button(action: {
+                navigationPath.append(.person(person))
+            }) {
                 PersonRowView(person: person)
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -281,13 +292,11 @@ struct PeopleListView: View {
         do {
             try await supabase.deleteAccount()
             print("✅ PeopleListView: Account deletion succeeded")
-            // User will be automatically signed out via auth state change
         } catch {
             print("❌ PeopleListView: Failed to delete account: \(error)")
-            print("❌ PeopleListView: Error details: \(error.localizedDescription)")
-            // TODO: Show error alert to user
         }
     }
+
 }
 
 @available(iOS 26.0, *)
@@ -431,6 +440,12 @@ struct PersonEditRowView: View {
         }
         .padding(.vertical, 2)
     }
+}
+
+// MARK: - Navigation Destination Types
+
+enum NavigationDestination: Hashable {
+    case person(Person)
 }
 
 @available(iOS 26.0, *)

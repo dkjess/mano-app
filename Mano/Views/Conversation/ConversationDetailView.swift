@@ -11,10 +11,13 @@ struct ConversationDetailView: View {
     let conversation: Conversation
     let person: Person
     let messages: [Message]
+    let highlightedMessageId: UUID?
+
     @Environment(\.dismiss) private var dismiss
+    @State private var currentlyHighlightedId: UUID?
 
     var body: some View {
-        NavigationStack {
+        ScrollViewReader { proxy in
             ScrollView {
                 VStack(spacing: 12) {
                     if messages.isEmpty {
@@ -26,29 +29,49 @@ struct ConversationDetailView: View {
                         .padding()
                     } else {
                         ForEach(messages.sorted { $0.createdAt < $1.createdAt }) { message in
-                            MessageBubbleView(message: message, isStreaming: false)
-                                .padding(.horizontal)
+                            MessageBubbleView(
+                                message: message,
+                                isStreaming: false,
+                                isHighlighted: currentlyHighlightedId == message.id
+                            )
+                            .id(message.id)
+                            .padding(.horizontal)
                         }
                     }
                 }
                 .padding(.top)
             }
-            .navigationTitle(conversationTitle)
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        dismiss()
-                    }
-                }
+            .onAppear {
+                if let targetId = highlightedMessageId {
+                    // Scroll to the message after a brief delay to ensure layout is ready
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                        withAnimation {
+                            proxy.scrollTo(targetId, anchor: .center)
+                        }
 
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: exportConversation) {
-                        Image(systemName: "square.and.arrow.up")
+                        // Highlight the message
+                        currentlyHighlightedId = targetId
+
+                        // Remove highlight after 2 seconds
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                            withAnimation {
+                                currentlyHighlightedId = nil
+                            }
+                        }
                     }
                 }
             }
         }
+        .navigationTitle(conversationTitle)
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: exportConversation) {
+                    Image(systemName: "square.and.arrow.up")
+                }
+            }
+        }
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var conversationTitle: String {

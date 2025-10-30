@@ -106,6 +106,7 @@ struct ConversationView: View {
                 }
             }
         }
+        .toolbar(.hidden, for: .tabBar)
         .task {
             await loadMessages()
         }
