@@ -37,7 +37,7 @@ struct PinnedView: View {
                 pinnedList
             }
         }
-        .navigationTitle("📌 Pinned Advice")
+        .navigationTitle("Pins")
         .navigationBarTitleDisplayMode(.large)
         .task {
             await loadPinnedMessages()

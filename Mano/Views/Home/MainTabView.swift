@@ -16,18 +16,27 @@ struct MainTabView: View {
             // People tab
             ManoHomeView()
                 .tabItem {
-                    Label("People", systemImage: "person.2")
+                    Label("People", systemImage: "person.fill")
                 }
                 .tag(0)
 
-            // Pinned tab
+            // Pins tab
             NavigationStack {
                 PinnedView()
             }
             .tabItem {
-                Label("Pinned", systemImage: "pin")
+                Label("Pins", systemImage: "pin.fill")
             }
             .tag(1)
+
+            // OKRs tab
+            NavigationStack {
+                OKRsView()
+            }
+            .tabItem {
+                Label("OKRs", systemImage: "target")
+            }
+            .tag(2)
         }
     }
 }
