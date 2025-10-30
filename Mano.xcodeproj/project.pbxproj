@@ -20,37 +20,14 @@
 		C86303672E64A9A50011C15F /* Mano.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Mano.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C8165B5A2E9D830E00C0D5ED /* Exceptions for "Mano" folder in "Mano" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = C86303662E64A9A50011C15F /* Mano */;
-		};
-		C8165B6B2E9D84A100C0D5ED /* Exceptions for "Mano iOS" folder in "Mano iOS" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				"Mano-iOS-Info.plist",
-			);
-			target = C8165B5E2E9D842F00C0D5ED /* Mano iOS */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		C8165B602E9D842F00C0D5ED /* Mano iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C8165B6B2E9D84A100C0D5ED /* Exceptions for "Mano iOS" folder in "Mano iOS" target */,
-			);
 			path = "Mano iOS";
 			sourceTree = "<group>";
 		};
 		C86303692E64A9A50011C15F /* Mano */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C8165B5A2E9D830E00C0D5ED /* Exceptions for "Mano" folder in "Mano" target */,
-			);
 			path = Mano;
 			sourceTree = "<group>";
 		};

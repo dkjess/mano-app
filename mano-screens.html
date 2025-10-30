@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mano Screen Examples</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: #335320;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #666;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+
+        .reference-note {
+            background: #E8F4E5;
+            border: 2px solid #335320;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 60px;
+            font-size: 15px;
+            line-height: 1.6;
+            color: #1a1a1a;
+        }
+
+        .reference-note strong {
+            color: #335320;
+        }
+
+        .state-section {
+            margin-bottom: 80px;
+        }
+
+        .section-title {
+            font-size: 28px;
+            font-weight: 700;
+            color: #335320;
+            margin-bottom: 12px;
+        }
+
+        .section-description {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 40px;
+            line-height: 1.6;
+        }
+
+        .screens-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(375px, 1fr));
+            gap: 60px;
+            justify-items: center;
+        }
+
+        .screen-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .state-label {
+            font-family: 'Monaco', monospace;
+            font-size: 14px;
+            font-weight: 600;
+            color: #335320;
+            margin-bottom: 16px;
+            padding: 8px 16px;
+            background: #E8F4E5;
+            border-radius: 8px;
+            border: 1px solid #335320;
+        }
+
+        .phone-frame {
+            background: white;
+            border-radius: 40px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+            width: 375px;
+        }
+
+        .screen {
+            background: #FAFAF8;
+            border-radius: 32px;
+            overflow: hidden;
+            height: 812px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .status-bar {
+            height: 44px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        /* People List Styles */
+        .list-header {
+            padding: 60px 20px 20px;
+            background: #FAFAF8;
+        }
+
+        .list-title {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 20px;
+        }
+
+        .person-card {
+            background: transparent;
+            border-bottom: 1px solid #e8e6e0;
+            padding: 16px 0;
+            margin: 0;
+        }
+
+        .person-card:last-child {
+            border-bottom: none;
+        }
+
+        .person-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 2px;
+        }
+
+        .person-role {
+            font-size: 15px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .person-meta {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .profile-badge {
+            background: #e8f4e5;
+            color: #335320;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .section-label {
+            font-size: 22px;
+            font-weight: 600;
+            color: #666;
+            padding: 0 20px;
+            margin: 24px 0 12px;
+        }
+
+        .add-button {
+            background: #335320;
+            color: white;
+            border: none;
+            padding: 16px 40px;
+            border-radius: 8px;
+            font-size: 17px;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 20px;
+            width: calc(100% - 40px);
+        }
+
+        /* Chat Styles */
+        .chat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            background: #FAFAF8;
+        }
+
+        .back-button, .menu-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            border: 1px solid #e8e6e0;
+        }
+
+        .chat-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+
+        .chat-content {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 85%;
+            font-size: 17px;
+            line-height: 1.5;
+            padding: 0;
+            margin-bottom: 8px;
+        }
+
+        .message-user {
+            color: #1a1a1a;
+            align-self: flex-end;
+            text-align: right;
+            font-weight: 400;
+        }
+
+        .message-assistant {
+            color: #1a1a1a;
+            align-self: flex-start;
+            font-weight: 400;
+        }
+
+        .timestamp {
+            font-size: 12px;
+            color: #999;
+            margin-top: 4px;
+            align-self: flex-end;
+        }
+
+        .timestamp-left {
+            align-self: flex-start;
+        }
+
+        /* Input Styles */
+        .input-area {
+            padding: 12px 20px 24px;
+            background: #FAFAF8;
+        }
+
+        .input-container {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            background: white;
+            border-radius: 12px;
+            padding: 8px 8px 8px 20px;
+            border: 1px solid #e8e6e0;
+        }
+
+        .input-field {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 16px;
+            outline: none;
+            color: #1a1a1a;
+        }
+
+        .mic-button {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #F2B824;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .send-button {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            background: #335320;
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Dictation Active State */
+        .dictation-overlay {
+            background: white;
+            border-top: 1px solid #e8e6e0;
+            padding: 20px;
+            border-radius: 24px 24px 0 0;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+        }
+
+        .dictation-text {
+            font-size: 17px;
+            line-height: 1.5;
+            color: #1a1a1a;
+            min-height: 80px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+        }
+
+        .recording-indicator {
+            font-size: 13px;
+            color: #999;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .recording-dot {
+            width: 8px;
+            height: 8px;
+            background: #F2B824;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        .mic-button-active {
+            width: 48px;
+            height: 48px;
+            border-radius: 10px;
+            background: #F2B824;
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            transform: scale(1.15);
+            box-shadow: 0 4px 12px rgba(242, 184, 36, 0.4);
+        }
+
+        /* Typing State */
+        .typing-area {
+            background: white;
+            border-top: 1px solid #e8e6e0;
+            padding: 16px 20px;
+        }
+
+        .text-input-field {
+            background: #FAFAF8;
+            border: 1px solid #e8e6e0;
+            border-radius: 12px;
+            padding: 12px;
+            min-height: 60px;
+            max-height: 120px;
+            overflow-y: auto;
+            margin-bottom: 12px;
+            font-size: 17px;
+            line-height: 1.5;
+            color: #1a1a1a;
+        }
+
+        /* Loading State */
+        .loading-indicator {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            padding: 16px;
+        }
+
+        .loading-dot {
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .loading-dot:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+
+        .loading-dot:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+
+        /* Empty State */
+        .empty-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .empty-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .empty-description {
+            font-size: 15px;
+            color: #666;
+            max-width: 280px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mano Screen Examples</h1>
+        <p class="subtitle">Full screen assemblies showing how components from the design system combine in real usage.</p>
+        
+        <div class="reference-note">
+            <strong>⚠️ Implementation Reference:</strong> These screens show components in context but are NOT implementation specs. For exact measurements, colors, spacing, and component specifications, always refer to the <a href="https://claude.ai/public/artifacts/47c57597-dc12-4ee5-b28f-a03da4885dad" style="color: #335320; font-weight: 600;">Mano Design System</a>.
+        </div>
+
+        <!-- PEOPLE LIST SCREENS -->
+        <div class="state-section">
+            <h2 class="section-title">People List Screens</h2>
+            <p class="section-description">The main people management view where users see their team members and navigate to individual conversations.</p>
+            
+            <div class="screens-grid">
+                <!-- People List - Default -->
+                <div class="screen-container">
+                    <div class="state-label">people-list-default</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="list-header">
+                                <div class="list-title">People</div>
+                                <div style="padding: 20px 0; border-bottom: 1px solid #e8e6e0; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                        <div>
+                                            <div class="person-name">You</div>
+                                            <div class="person-role">Director</div>
+                                        </div>
+                                        <div class="profile-badge">Profile</div>
+                                    </div>
+                                    <div class="person-meta">
+                                        <span>Last conversation 1 wk ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="section-label">My People</div>
+                            <div style="padding: 0 20px;">
+                                <div class="person-card">
+                                    <div class="person-name">Jacob</div>
+                                    <div class="person-role">Designer</div>
+                                    <div class="person-meta">
+                                        <span>Last: 16 hr ago</span>
+                                        <span style="margin-left: auto; color: #335320;">Direct Report</span>
+                                    </div>
+                                </div>
+                                <div class="person-card">
+                                    <div class="person-name">Ricardo</div>
+                                    <div class="person-role">Designer</div>
+                                    <div class="person-meta">
+                                        <span>Last: 5 days ago</span>
+                                        <span style="margin-left: auto; color: #666;">Peer</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="add-button">Add Person</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- People List - Empty -->
+                <div class="screen-container">
+                    <div class="state-label">people-list-empty</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="list-header">
+                                <div class="list-title">People</div>
+                                <div style="padding: 20px 0; border-bottom: 1px solid #e8e6e0; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                        <div>
+                                            <div class="person-name">You</div>
+                                            <div class="person-role">Director</div>
+                                        </div>
+                                        <div class="profile-badge">Profile</div>
+                                    </div>
+                                    <div class="person-meta">
+                                        <span>Last conversation 1 wk ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="empty-state">
+                                <div class="empty-icon">👥</div>
+                                <div class="empty-title">No people yet</div>
+                                <div class="empty-description">Add the people you manage to start getting coaching and guidance</div>
+                            </div>
+                            <button class="add-button">Add Person</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONVERSATION SCREENS -->
+        <div class="state-section">
+            <h2 class="section-title">Conversation Screens</h2>
+            <p class="section-description">The main chat interface where users interact with Mano in different input states.</p>
+            
+            <div class="screens-grid">
+                <!-- Conversation - Default -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-default</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jess</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="chat-content">
+                                <div class="message message-user">
+                                    Honestly I am just a bit worn out.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:00</div>
+                                
+                                <div class="message message-assistant">
+                                    I hear you – being worn out is real, and it's important to acknowledge it. What do you think is draining you most right now? Is it the day-to-day grind, specific challenges with the team, or something else entirely?
+                                </div>
+                                <div class="timestamp timestamp-left">Oct 16, 22:00</div>
+                                
+                                <div class="message message-user">
+                                    I think it's just this time of year where it's really busy at work.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:12</div>
+                            </div>
+                            <div class="input-area">
+                                <div class="input-container">
+                                    <input type="text" class="input-field" placeholder="Message Mano...">
+                                    <button class="mic-button">🎤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation - Empty -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-empty</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jacob</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="empty-state">
+                                <div class="empty-icon">💬</div>
+                                <div class="empty-title">Start a conversation</div>
+                                <div class="empty-description">Share what's on your mind about Jacob and get coaching</div>
+                            </div>
+                            <div class="input-area">
+                                <div class="input-container">
+                                    <input type="text" class="input-field" placeholder="Message Mano...">
+                                    <button class="mic-button">🎤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation - Dictation Active -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-dictation-active</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jess</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="chat-content" style="padding-bottom: 200px;">
+                                <div class="message message-user">
+                                    Honestly I am just a bit worn out.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:00</div>
+                                
+                                <div class="message message-assistant">
+                                    I hear you – being worn out is real, and it's important to acknowledge it. What do you think is draining you most right now?
+                                </div>
+                                <div class="timestamp timestamp-left">Oct 16, 22:00</div>
+                            </div>
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0;">
+                                <div class="dictation-overlay">
+                                    <div class="dictation-text">
+                                        I've been thinking about this situation with Jacob and I'm not entirely sure how to approach it. He's clearly talented but he seems disengaged lately and I don't know if it's something I'm doing wrong or if there's something else going on.
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between;">
+                                        <div class="recording-indicator">
+                                            <span class="recording-dot"></span>
+                                            <span>Recording...</span>
+                                        </div>
+                                        <button class="mic-button-active">🎤</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation - Typing Active -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-typing-active</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jess</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="chat-content" style="padding-bottom: 450px;">
+                                <div class="message message-user">
+                                    Honestly I am just a bit worn out.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:00</div>
+                                
+                                <div class="message message-assistant">
+                                    I hear you – being worn out is real, and it's important to acknowledge it.
+                                </div>
+                                <div class="timestamp timestamp-left">Oct 16, 22:00</div>
+                            </div>
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0;">
+                                <div class="typing-area">
+                                    <div class="text-input-field">
+                                        I think I need to have a proper one-on-one with him soon to understand what's going on.
+                                    </div>
+                                    <div style="display: flex; gap: 12px; align-items: center;">
+                                        <button class="mic-button">🎤</button>
+                                        <button class="send-button">Send</button>
+                                    </div>
+                                </div>
+                                <!-- Full iOS Keyboard mockup -->
+                                <div style="background: #D1D5DB; padding: 6px 4px 20px; font-size: 22px;">
+                                    <!-- Row 1 -->
+                                    <div style="display: flex; gap: 6px; margin-bottom: 8px; justify-content: center;">
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">Q</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">W</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">E</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">R</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">T</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">Y</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">U</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">I</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">O</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">P</div>
+                                    </div>
+                                    <!-- Row 2 -->
+                                    <div style="display: flex; gap: 6px; margin-bottom: 8px; justify-content: center; padding: 0 20px;">
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">A</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">S</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">D</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">F</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">G</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">H</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">J</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">K</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">L</div>
+                                    </div>
+                                    <!-- Row 3 -->
+                                    <div style="display: flex; gap: 6px; margin-bottom: 8px; justify-content: center;">
+                                        <div style="flex: 1.5; background: #ADB5BD; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 18px;">⇧</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">Z</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">X</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">C</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">V</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">B</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">N</div>
+                                        <div style="flex: 1; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-weight: 400;">M</div>
+                                        <div style="flex: 1.5; background: #ADB5BD; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 18px;">⌫</div>
+                                    </div>
+                                    <!-- Row 4 -->
+                                    <div style="display: flex; gap: 6px; justify-content: center;">
+                                        <div style="flex: 1.2; background: #ADB5BD; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 16px;">123</div>
+                                        <div style="flex: 1; background: #ADB5BD; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 18px;">🌐</div>
+                                        <div style="flex: 4; background: white; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 16px;">space</div>
+                                        <div style="flex: 1.5; background: #ADB5BD; border-radius: 5px; padding: 12px; text-align: center; box-shadow: 0 1px 0 rgba(0,0,0,0.1); font-size: 16px;">return</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation - Mano Thinking -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-mano-thinking</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jess</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="chat-content">
+                                <div class="message message-user">
+                                    Honestly I am just a bit worn out.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:00</div>
+                                
+                                <div class="message message-assistant">
+                                    I hear you – being worn out is real, and it's important to acknowledge it. What do you think is draining you most right now?
+                                </div>
+                                <div class="timestamp timestamp-left">Oct 16, 22:00</div>
+                                
+                                <div class="message message-user">
+                                    I think it's just this time of year where it's really busy at work.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:12</div>
+                                
+                                <div class="loading-indicator">
+                                    <div class="loading-dot"></div>
+                                    <div class="loading-dot"></div>
+                                    <div class="loading-dot"></div>
+                                </div>
+                            </div>
+                            <div class="input-area">
+                                <div class="input-container" style="opacity: 0.5; pointer-events: none;">
+                                    <input type="text" class="input-field" placeholder="Message Mano..." disabled>
+                                    <button class="mic-button" disabled>🎤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Conversation - Streaming Response -->
+                <div class="screen-container">
+                    <div class="state-label">conversation-streaming-response</div>
+                    <div class="phone-frame">
+                        <div class="screen">
+                            <div class="status-bar">
+                                <span>16:16</span>
+                                <span>● ● ●</span>
+                            </div>
+                            <div class="chat-header">
+                                <div class="back-button">←</div>
+                                <div class="chat-title">Jess</div>
+                                <div class="menu-button">⋯</div>
+                            </div>
+                            <div class="chat-content">
+                                <div class="message message-user">
+                                    Honestly I am just a bit worn out.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:00</div>
+                                
+                                <div class="message message-assistant">
+                                    I hear you – being worn out is real, and it's important to acknowledge it. What do you think is draining you most right now?
+                                </div>
+                                <div class="timestamp timestamp-left">Oct 16, 22:00</div>
+                                
+                                <div class="message message-user">
+                                    I think it's just this time of year where it's really busy at work.
+                                </div>
+                                <div class="timestamp">Oct 16, 22:12</div>
+                                
+                                <div class="message message-assistant">
+                                    That makes sense – seasonal peaks can be exhausting, especially when they pile on top of everything else. Before we dig into solutions, I'm curious: is this wearing you out in a "I need a break" way, or more of a▮
+                                </div>
+                            </div>
+                            <div class="input-area">
+                                <div class="input-container" style="opacity: 0.5; pointer-events: none;">
+                                    <input type="text" class="input-field" placeholder="Message Mano..." disabled>
+                                    <button class="mic-button" disabled>🎤</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

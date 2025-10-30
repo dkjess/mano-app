@@ -19,13 +19,44 @@ struct PeopleListView: View {
     @State private var personToDelete: Person? = nil
     @State private var showingDeleteConfirmation = false
     @State private var navigationPath: [NavigationDestination] = []
+    @State private var showEnvironmentPicker = false
+    @State private var showingDeleteAccountConfirmation = false
     @ObservedObject private var supabase = SupabaseManager.shared
+    @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             mainContent
                 .navigationTitle("People")
                 .navigationBarTitleDisplayMode(.large)
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Menu {
+                            if environmentManager.currentEnvironment == .local {
+                                Button(action: { showEnvironmentPicker = true }) {
+                                    Label("Switch Environment", systemImage: "network")
+                                }
+                                Divider()
+                            }
+
+                            Button(role: .destructive, action: {
+                                showingDeleteAccountConfirmation = true
+                            }) {
+                                Label("Delete Account", systemImage: "trash")
+                            }
+
+                            Button(action: {
+                                Task {
+                                    try? await supabase.auth.signOut()
+                                }
+                            }) {
+                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            }
+                        } label: {
+                            Image(systemName: "gearshape")
+                        }
+                    }
+                }
                 .navigationDestination(for: NavigationDestination.self) { destination in
                     destinationView(for: destination)
                 }
@@ -93,6 +124,19 @@ struct PeopleListView: View {
                 }
             } message: { person in
                 Text("Are you sure you want to delete \(person.name)? This will permanently remove all conversations and data related to this person. This action cannot be undone.")
+            }
+            .sheet(isPresented: $showEnvironmentPicker) {
+                EnvironmentPickerView()
+            }
+            .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
+                Button("Cancel", role: .cancel) { }
+                Button("Delete Account", role: .destructive) {
+                    Task {
+                        await deleteAccount()
+                    }
+                }
+            } message: {
+                Text("Are you sure you want to permanently delete your account? This will remove all your data, conversations, and people. This action cannot be undone.")
             }
         }
     }
@@ -242,6 +286,16 @@ struct PeopleListView: View {
             print("❌ PeopleListView: Failed to delete person: \(error)")
             print("❌ PeopleListView: Error details: \(error.localizedDescription)")
             // TODO: Show error alert to user
+        }
+    }
+
+    private func deleteAccount() async {
+        print("🗑️ PeopleListView: Starting account deletion")
+        do {
+            try await supabase.deleteAccount()
+            print("✅ PeopleListView: Account deletion succeeded")
+        } catch {
+            print("❌ PeopleListView: Failed to delete account: \(error)")
         }
     }
 
