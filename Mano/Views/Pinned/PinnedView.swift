@@ -38,6 +38,13 @@ struct PinnedView: View {
         }
         .navigationTitle("Pins")
         .navigationBarTitleDisplayMode(.large)
+        .navigationDestination(for: ConversationIdentifier.self) { conversation in
+            ConversationDetailViewWrapper(
+                messageId: conversation.messageId,
+                personId: conversation.personId,
+                conversationId: conversation.conversationId
+            )
+        }
         .task {
             await loadPinnedMessages()
             await subscribeToUpdates()
@@ -99,13 +106,6 @@ struct PinnedView: View {
             }
         }
         .listStyle(.plain)
-        .navigationDestination(for: ConversationIdentifier.self) { conversation in
-            ConversationDetailViewWrapper(
-                messageId: conversation.messageId,
-                personId: conversation.personId,
-                conversationId: conversation.conversationId
-            )
-        }
     }
 
     private func loadPinnedMessages() async {
