@@ -31,6 +31,11 @@ struct Person: Codable, Identifiable, Hashable {
     let isSelf: Bool?
     let startedWorkingTogether: Date?
 
+    // Computed property to extract first name
+    var firstName: String {
+        name.components(separatedBy: " ").first ?? name
+    }
+
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"

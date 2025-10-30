@@ -12,6 +12,7 @@ import Auth
 import AppKit
 #endif
 
+@available(iOS 26.0, *)
 struct ConversationView: View {
     let person: Person
     @State private var messages: [Message] = []
@@ -35,11 +36,25 @@ struct ConversationView: View {
     @State private var showingErrorAlert = false
     @State private var hapticGenerator = UIImpactFeedbackGenerator(style: .light)
     @State private var lastHapticLength = 0
+    @State private var shouldDismissInput = false
 
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
     }
-    
+
+    var inputAreaHeight: CGFloat {
+        // Approximate height for input area to add padding to messages
+        return 100
+    }
+
+    func handleTapOutside() {
+        // Dismiss keyboard when tapping outside
+        isInputFocused = false
+
+        // Trigger input component to return to idle state
+        shouldDismissInput = true
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             if isLoading {
@@ -50,6 +65,7 @@ struct ConversationView: View {
                 conversationContent
             }
         }
+        .background(ManoColors.almostWhite)
         .navigationTitle(person.name)
         #if os(iOS)
         .navigationBarTitleDisplayMode(.large)
@@ -126,7 +142,7 @@ struct ConversationView: View {
     }
     
     private var emptyStateView: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             // Empty state content
             VStack {
                 Spacer()
@@ -137,50 +153,57 @@ struct ConversationView: View {
                 )
                 Spacer()
             }
+            .padding(.bottom, inputAreaHeight)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                handleTapOutside()
+            }
 
-            // Input at bottom (no longer floating)
-            InputComposer(
+            // Voice-first message input component (fixed at bottom)
+            MessageInputComponent(
                 person: person,
-                messageText: $messageText,
-                isSending: $isSending,
-                isInputFocused: _isInputFocused,
-                onSendMessage: sendMessage
+                onSendMessage: { text in
+                    messageText = text
+                    sendMessage()
+                },
+                shouldDismiss: $shouldDismissInput
             )
         }
-        .onAppear {
-            // Auto-focus input when entering empty conversation
-            DispatchQueue.main.asyncAfter(deadline: .now() + Timeouts.autoFocus) {
-                isInputFocused = true
-            }
-        }
+        .ignoresSafeArea(.keyboard)
     }
     
     private var conversationContent: some View {
-        VStack(spacing: 0) {
+        ZStack(alignment: .bottom) {
             // Main conversation area
             ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 12) {
                         ForEach(messages) { message in
-                            MessageBubbleView(message: message, isStreaming: false)
-                                .id(message.id)
-                                .scaleEffect(newMessageIds.contains(message.id) ? 0.8 : 1.0)
-                                .opacity(newMessageIds.contains(message.id) ? 0 : 1)
-                                .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
-                                .onAppear {
-                                    if newMessageIds.contains(message.id) {
-                                        _ = withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
-                                            newMessageIds.remove(message.id)
-                                        }
+                            Group {
+                                if message.isUser {
+                                    UserMessageView(message: message)
+                                } else {
+                                    AssistantMessageView(message: message)
+                                }
+                            }
+                            .id(message.id)
+                            .scaleEffect(newMessageIds.contains(message.id) ? 0.8 : 1.0)
+                            .opacity(newMessageIds.contains(message.id) ? 0 : 1)
+                            .animation(.spring(response: 0.4, dampingFraction: 0.7), value: newMessageIds.contains(message.id))
+                            .onAppear {
+                                if newMessageIds.contains(message.id) {
+                                    _ = withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+                                        newMessageIds.remove(message.id)
                                     }
                                 }
+                            }
                         }
                         
                         // Show only ONE thinking/loading state at a time
                         if let streamingMsg = streamingMessage {
                             if !streamingText.isEmpty {
                                 // Streaming content - show the actual message with progressive reveal
-                                MessageBubbleView(
+                                AssistantMessageView(
                                     message: Message(
                                         id: streamingMsg.id,
                                         userId: streamingMsg.userId,
@@ -190,8 +213,7 @@ struct ConversationView: View {
                                         topicId: streamingMsg.topicId,
                                         conversationId: streamingMsg.conversationId,
                                         createdAt: streamingMsg.createdAt
-                                    ),
-                                    isStreaming: true
+                                    )
                                 )
                                 .id("streaming")
                             } else if let contextualMessage = contextualThinkingMessage,
@@ -210,7 +232,11 @@ struct ConversationView: View {
                         }
                     }
                     .padding()
-                    .padding(.bottom, 0)
+                    .padding(.bottom, inputAreaHeight)  // Space for input component
+                }
+                .contentShape(Rectangle())  // Make entire area tappable
+                .onTapGesture {
+                    handleTapOutside()
                 }
                 .onAppear {
                     if let lastMessage = messages.last {
@@ -289,11 +315,6 @@ struct ConversationView: View {
                         }
                     }
                 }
-                .contentShape(Rectangle())
-                .onTapGesture {
-                    // Dismiss keyboard and collapse input when tapping conversation
-                    isInputFocused = false
-                }
                 .simultaneousGesture(
                     DragGesture()
                         .onChanged { _ in
@@ -308,17 +329,19 @@ struct ConversationView: View {
                 )
             }
 
-            // Input composer at bottom (no longer floating/overlapping)
-            InputComposer(
+            // Voice-first message input component (fixed at bottom)
+            MessageInputComponent(
                 person: person,
-                messageText: $messageText,
-                isSending: $isSending,
-                isInputFocused: _isInputFocused,
-                onSendMessage: sendMessage
+                onSendMessage: { text in
+                    messageText = text
+                    sendMessage()
+                },
+                shouldDismiss: $shouldDismissInput
             )
         }
+        .ignoresSafeArea(.keyboard)  // Let keyboard push content
     }
-    
+
     // MARK: - Helper Methods
     
     private func loadMessages() async {
@@ -593,6 +616,7 @@ struct ConversationView: View {
 // Note: ConversationHistoryView, ConversationHistoryRow, ConversationDetailView,
 // and NewConversationSheet have been extracted to separate files in Views/Conversation/
 
+@available(iOS 26.0, *)
 #Preview {
     NavigationStack {
         ConversationView(
