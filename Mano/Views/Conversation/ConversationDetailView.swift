@@ -71,6 +71,7 @@ struct ConversationDetailView: View {
                 }
             }
         }
+        .toolbar(.hidden, for: .tabBar)
     }
 
     private var conversationTitle: String {
