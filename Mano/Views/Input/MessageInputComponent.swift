@@ -8,6 +8,97 @@
 import SwiftUI
 import AVFoundation
 import Combine
+import UIKit
+
+// MARK: - Auto-scrolling TextEditor wrapper
+
+struct AutoScrollTextEditor: UIViewRepresentable {
+    @Binding var text: String
+    @Binding var isFocused: Bool
+    @Binding var calculatedHeight: CGFloat
+
+    func makeUIView(context: Context) -> UITextView {
+        let textView = UITextView()
+        textView.delegate = context.coordinator
+        textView.font = UIFont.systemFont(ofSize: 17)
+        textView.textColor = UIColor(ManoColors.primaryText)
+        textView.backgroundColor = .clear
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        textView.isScrollEnabled = true
+        textView.showsVerticalScrollIndicator = true
+        textView.alwaysBounceVertical = false
+        textView.isUserInteractionEnabled = true
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        if uiView.text != text {
+            uiView.text = text
+            // Force layout update to recalculate content size
+            uiView.setNeedsLayout()
+            uiView.layoutIfNeeded()
+            // Scroll to cursor after text update
+            DispatchQueue.main.async {
+                scrollToCursor(uiView)
+            }
+        }
+
+        // Handle focus state
+        if isFocused && !uiView.isFirstResponder {
+            uiView.becomeFirstResponder()
+        } else if !isFocused && uiView.isFirstResponder {
+            uiView.resignFirstResponder()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    private func scrollToCursor(_ textView: UITextView) {
+        // Scroll to the cursor position
+        if let selectedRange = textView.selectedTextRange {
+            let caretRect = textView.caretRect(for: selectedRange.end)
+            textView.scrollRectToVisible(caretRect, animated: false)
+        }
+    }
+
+    class Coordinator: NSObject, UITextViewDelegate {
+        var parent: AutoScrollTextEditor
+
+        init(_ parent: AutoScrollTextEditor) {
+            self.parent = parent
+        }
+
+        func textViewDidChange(_ textView: UITextView) {
+            parent.text = textView.text
+
+            // Calculate height from content size
+            let size = textView.sizeThatFits(CGSize(width: textView.frame.width, height: .infinity))
+            let newHeight = max(44, min(170, size.height))
+
+            DispatchQueue.main.async {
+                self.parent.calculatedHeight = newHeight
+            }
+
+            // Scroll to cursor when text changes
+            DispatchQueue.main.async {
+                if let selectedRange = textView.selectedTextRange {
+                    let caretRect = textView.caretRect(for: selectedRange.end)
+                    textView.scrollRectToVisible(caretRect, animated: false)
+                }
+            }
+        }
+
+        func textViewDidBeginEditing(_ textView: UITextView) {
+            parent.isFocused = true
+        }
+
+        func textViewDidEndEditing(_ textView: UITextView) {
+            parent.isFocused = false
+        }
+    }
+}
 
 @available(iOS 26.0, *)
 enum VoiceInputState: Equatable {
@@ -20,12 +111,16 @@ enum VoiceInputState: Equatable {
 struct MessageInputComponent: View {
     let person: Person
     let onSendMessage: (String) -> Void
+    @Binding var shouldDismiss: Bool
 
     @StateObject private var voiceManager = VoiceRecordingManager()
     @State private var inputState: VoiceInputState = .idle
     @State private var messageText: String = ""
     @State private var keyboardHeight: CGFloat = 0
-    @FocusState private var isTextFieldFocused: Bool
+    @State private var safeAreaBottom: CGFloat = 0
+    @State private var textEditorHeight: CGFloat = 44
+    @State private var isTextFieldFocused: Bool = false
+    @State private var textBeforeRecording: String = ""
 
     // Dynamic placeholder text
     var placeholderText: String {
@@ -42,14 +137,24 @@ struct MessageInputComponent: View {
 
             case .recording:
                 recordingInputView
-                // NO horizontal padding - full width
+                    // NO horizontal padding - full width
 
             case .typing(let keyboardVisible):
                 typingInputView(keyboardVisible: keyboardVisible)
-                // NO offset - let system handle keyboard avoidance
-                // NO horizontal padding - full width
+                    .offset(y: keyboardVisible ? -(keyboardHeight - safeAreaBottom) : 0)
             }
         }
+        .background(
+            GeometryReader { geometry in
+                Color.clear
+                    .onAppear {
+                        safeAreaBottom = geometry.safeAreaInsets.bottom
+                    }
+                    .onChange(of: geometry.safeAreaInsets.bottom) { oldValue, newValue in
+                        safeAreaBottom = newValue
+                    }
+            }
+        )
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .animation(.easeOut(duration: 0.25), value: inputState)
         .onReceive(Publishers.keyboardHeight) { height in
@@ -61,6 +166,28 @@ struct MessageInputComponent: View {
                     inputState = .typing(keyboardVisible: false)
                 }
             }
+        }
+        .onChange(of: shouldDismiss) { _, newValue in
+            if newValue {
+                dismissInput()
+                // Reset the trigger
+                shouldDismiss = false
+            }
+        }
+    }
+
+    // MARK: - Dismissal
+
+    private func dismissInput() {
+        // Only dismiss if in typing mode
+        guard case .typing = inputState else { return }
+
+        // Dismiss keyboard
+        isTextFieldFocused = false
+
+        // Return to idle state
+        withAnimation(.easeOut(duration: 0.25)) {
+            inputState = .idle
         }
     }
 
@@ -87,39 +214,28 @@ struct MessageInputComponent: View {
                 }
 
             // Mic button (56×56px with pulse)
-            Button {} label: {
+            Button {
+                // Simple tap to start recording
+                textBeforeRecording = messageText  // Save existing text
+                withAnimation(.easeOut(duration: 0.2)) {
+                    inputState = .recording
+                }
+                Task {
+                    await startRecordingAsync()
+                }
+                #if os(iOS)
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                #endif
+            } label: {
                 Image(systemName: "mic.fill")
-                    .font(.system(size: 24))
+                    .font(.system(size: 18))
                     .foregroundColor(.white)
             }
-            .frame(width: 56, height: 56)  // 56px in idle
+            .frame(width: 40, height: 40)  // 40px matches typing state
             .background(Color.warmYellow)
             .cornerRadius(CornerRadius.button)
             .shadow(color: Color.warmYellow.opacity(0.4), radius: 4, x: 0, y: 0)
             .modifier(PulseModifier())  // Gentle pulse animation
-            .onLongPressGesture(minimumDuration: 0.1, maximumDistance: 50) {
-                // Gesture complete
-            } onPressingChanged: { isPressing in
-                if isPressing {
-                    // Finger down - start recording immediately
-                    if inputState == .idle {
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            inputState = .recording
-                        }
-                        Task {
-                            await startRecordingAsync()
-                        }
-                        #if os(iOS)
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        #endif
-                    }
-                } else {
-                    // Finger lifted - stop recording
-                    if inputState == .recording {
-                        stopRecording()
-                    }
-                }
-            }
         }
         .padding(.horizontal, Spacing.md)
         .padding(.vertical, Spacing.sm)
@@ -145,14 +261,14 @@ struct MessageInputComponent: View {
                         .frame(width: 8, height: 8)
                         .modifier(PulseDotModifier())
 
-                    Text("Hold to continue speaking")
+                    Text("Listening...")
                         .font(.system(size: 13))
                         .foregroundColor(.tertiaryText)
                 }
 
                 Spacer()
 
-                Text("Release to finish")
+                Text("Tap to finish")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundColor(.primaryText)
             }
@@ -182,26 +298,32 @@ struct MessageInputComponent: View {
             .frame(height: 24)
             .padding(.bottom, Spacing.base)
 
-            // Large visual mic indicator (80×80px)
-            ZStack {
-                // Outer glow
-                Circle()
-                    .fill(Color.warmYellow.opacity(0.2))
-                    .frame(width: 100, height: 100)
-                    .blur(radius: 10)
+            // Large stop/pause button (80×80px)
+            Button {
+                // Stop recording and transition to typing
+                stopRecording()
+            } label: {
+                ZStack {
+                    // Outer glow
+                    Circle()
+                        .fill(Color.warmYellow.opacity(0.2))
+                        .frame(width: 100, height: 100)
+                        .blur(radius: 10)
 
-                // Main circle (80×80px when recording)
-                Circle()
-                    .fill(Color.warmYellow)
-                    .frame(width: 80, height: 80)
-                    .overlay(
-                        Image(systemName: "mic.fill")
-                            .font(.system(size: 32))
-                            .foregroundColor(.white)
-                    )
-                    .shadow(color: Color.warmYellow.opacity(0.5), radius: 20, x: 0, y: 4)
+                    // Main circle (80×80px when recording)
+                    Circle()
+                        .fill(Color.warmYellow)
+                        .frame(width: 80, height: 80)
+                        .overlay(
+                            Image(systemName: "pause.fill")
+                                .font(.system(size: 32))
+                                .foregroundColor(.white)
+                        )
+                        .shadow(color: Color.warmYellow.opacity(0.5), radius: 20, x: 0, y: 4)
+                }
+                .scaleEffect(1.05)  // Slight scale for emphasis
             }
-            .scaleEffect(1.05)  // Slight scale for emphasis
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(.vertical, Spacing.lg)
         .frame(minHeight: 280, maxHeight: 360)
@@ -220,21 +342,20 @@ struct MessageInputComponent: View {
 
     func typingInputView(keyboardVisible: Bool) -> some View {
         VStack(spacing: Spacing.md) {
-            // Text editor
-            TextEditor(text: $messageText)
-                .focused($isTextFieldFocused)
-                .font(.system(size: 17))
-                .foregroundColor(.primaryText)
-                .lineSpacing(8)
-                .padding(Spacing.md)
-                .frame(minHeight: keyboardVisible ? 44 : 60, maxHeight: keyboardVisible ? 88 : 120)
-                .background(Color.almostWhite)
-                .overlay(
-                    RoundedRectangle(cornerRadius: CornerRadius.input)
-                        .stroke(Color.stone, lineWidth: 1)
-                )
-                .cornerRadius(CornerRadius.input)
-                .scrollContentBackground(.hidden)
+            // Text editor - starts at 1 line, expands to max 6 lines
+            AutoScrollTextEditor(
+                text: $messageText,
+                isFocused: $isTextFieldFocused,
+                calculatedHeight: $textEditorHeight
+            )
+            .frame(height: textEditorHeight)
+            .animation(.easeOut(duration: 0.2), value: textEditorHeight)
+            .background(Color.almostWhite)
+            .overlay(
+                RoundedRectangle(cornerRadius: CornerRadius.input)
+                    .stroke(Color.stone, lineWidth: 1)
+            )
+            .cornerRadius(CornerRadius.input)
 
             // Button row - SEND FIRST, MIC LAST
             HStack(spacing: Spacing.md) {
@@ -253,7 +374,20 @@ struct MessageInputComponent: View {
                 .disabled(messageText.isEmpty)
 
                 // Small mic button (40×40px, NO PULSE) - Fixed on right
-                Button {} label: {
+                Button {
+                    // Simple tap - dismiss keyboard and start recording
+                    textBeforeRecording = messageText  // Save existing text
+                    isTextFieldFocused = false
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        inputState = .recording
+                    }
+                    Task {
+                        await startRecordingAsync()
+                    }
+                    #if os(iOS)
+                    UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                    #endif
+                } label: {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 18))
                         .foregroundColor(.white)
@@ -262,28 +396,6 @@ struct MessageInputComponent: View {
                 .background(Color.warmYellow)
                 .cornerRadius(CornerRadius.button)
                 // NO PulseModifier - static in typing mode
-                .onLongPressGesture(minimumDuration: 0.1, maximumDistance: 50) {
-                    // Gesture complete
-                } onPressingChanged: { isPressing in
-                    if isPressing {
-                        // Finger down - dismiss keyboard and start recording
-                        isTextFieldFocused = false
-                        withAnimation(.easeOut(duration: 0.2)) {
-                            inputState = .recording
-                        }
-                        Task {
-                            await startRecordingAsync()
-                        }
-                        #if os(iOS)
-                        UIImpactFeedbackGenerator(style: .medium).impactOccurred()
-                        #endif
-                    } else {
-                        // Finger lifted - stop recording
-                        if inputState == .recording {
-                            stopRecording()
-                        }
-                    }
-                }
             }
         }
         .padding(Spacing.base)
@@ -325,7 +437,22 @@ struct MessageInputComponent: View {
 
     func stopRecording() {
         voiceManager.stopRecording()
-        messageText = voiceManager.transcriptionText
+
+        // Append new transcription to existing text
+        let newTranscription = voiceManager.transcriptionText
+        if !textBeforeRecording.isEmpty && !newTranscription.isEmpty {
+            // Add space between existing and new text
+            messageText = textBeforeRecording + " " + newTranscription
+        } else if !newTranscription.isEmpty {
+            // No existing text, just use new transcription
+            messageText = newTranscription
+        } else {
+            // No new transcription, keep existing text
+            messageText = textBeforeRecording
+        }
+
+        textBeforeRecording = ""  // Clear saved text
+
         withAnimation(.easeOut(duration: 0.2)) {
             inputState = .typing(keyboardVisible: false)
         }

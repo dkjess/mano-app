@@ -36,6 +36,7 @@ struct ConversationView: View {
     @State private var showingErrorAlert = false
     @State private var hapticGenerator = UIImpactFeedbackGenerator(style: .light)
     @State private var lastHapticLength = 0
+    @State private var shouldDismissInput = false
 
     var canSend: Bool {
         !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isSending
@@ -50,8 +51,8 @@ struct ConversationView: View {
         // Dismiss keyboard when tapping outside
         isInputFocused = false
 
-        // Additional logic for returning to idle state would be handled by the input component
-        // since it manages its own state
+        // Trigger input component to return to idle state
+        shouldDismissInput = true
     }
 
     var body: some View {
@@ -164,7 +165,8 @@ struct ConversationView: View {
                 onSendMessage: { text in
                     messageText = text
                     sendMessage()
-                }
+                },
+                shouldDismiss: $shouldDismissInput
             )
         }
         .ignoresSafeArea(.keyboard)
@@ -333,7 +335,8 @@ struct ConversationView: View {
                 onSendMessage: { text in
                     messageText = text
                     sendMessage()
-                }
+                },
+                shouldDismiss: $shouldDismissInput
             )
         }
         .ignoresSafeArea(.keyboard)  // Let keyboard push content
