@@ -18,55 +18,14 @@ struct PeopleListView: View {
     @State private var personToEdit: Person? = nil
     @State private var personToDelete: Person? = nil
     @State private var showingDeleteConfirmation = false
-    @State private var showEnvironmentPicker = false
-    @State private var showingDeleteAccountConfirmation = false
     @State private var navigationPath: [NavigationDestination] = []
     @ObservedObject private var supabase = SupabaseManager.shared
-    @ObservedObject private var environmentManager = BackendEnvironmentManager.shared
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             mainContent
                 .navigationTitle("People")
                 .navigationBarTitleDisplayMode(.large)
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Menu {
-                            if !people.isEmpty {
-                                Button(action: {
-                                    isEditMode.toggle()
-                                }) {
-                                    Label(isEditMode ? "Done Editing" : "Edit People", systemImage: isEditMode ? "checkmark" : "pencil")
-                                }
-                                Divider()
-                            }
-
-                            if environmentManager.currentEnvironment == .local {
-                                Button(action: { showEnvironmentPicker = true }) {
-                                    Label("Switch Environment", systemImage: "network")
-                                }
-                            }
-
-                            Button(role: .destructive, action: {
-                                showingDeleteAccountConfirmation = true
-                            }) {
-                                Label("Delete Account", systemImage: "trash")
-                            }
-
-                            Button(action: {
-                                Task {
-                                    try? await supabase.auth.signOut()
-                                }
-                            }) {
-                                Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
-                            }
-                        } label: {
-                            Image(systemName: "gearshape.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.secondaryText)
-                        }
-                    }
-                }
                 .navigationDestination(for: NavigationDestination.self) { destination in
                     destinationView(for: destination)
                 }
@@ -91,9 +50,6 @@ struct PeopleListView: View {
                         navigateToNewPerson = newPerson
                     }
                 )
-            }
-            .sheet(isPresented: $showEnvironmentPicker) {
-                EnvironmentPickerView()
             }
             .sheet(item: $personToEdit) { person in
                 if person.isSelf == true {
@@ -137,16 +93,6 @@ struct PeopleListView: View {
                 }
             } message: { person in
                 Text("Are you sure you want to delete \(person.name)? This will permanently remove all conversations and data related to this person. This action cannot be undone.")
-            }
-            .alert("Delete Account", isPresented: $showingDeleteAccountConfirmation) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete Account", role: .destructive) {
-                    Task {
-                        await deleteAccount()
-                    }
-                }
-            } message: {
-                Text("Are you sure you want to permanently delete your account? This will remove all your data, conversations, and people. This action cannot be undone.")
             }
         }
     }
@@ -299,18 +245,6 @@ struct PeopleListView: View {
         }
     }
 
-    private func deleteAccount() async {
-        print("🗑️ PeopleListView: Starting account deletion")
-        do {
-            try await supabase.deleteAccount()
-            print("✅ PeopleListView: Account deletion succeeded")
-            // User will be automatically signed out via auth state change
-        } catch {
-            print("❌ PeopleListView: Failed to delete account: \(error)")
-            print("❌ PeopleListView: Error details: \(error.localizedDescription)")
-            // TODO: Show error alert to user
-        }
-    }
 }
 
 @available(iOS 26.0, *)
