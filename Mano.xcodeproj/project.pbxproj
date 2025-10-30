@@ -437,7 +437,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Mano/Info.plist;
+				INFOPLIST_FILE = "Mano-iOS-Info.plist";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -484,7 +484,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Mano/Info.plist;
+				INFOPLIST_FILE = "Mano-iOS-Info.plist";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Mano uses your microphone to transcribe your voice messages for easier coaching conversations.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Mano uses speech recognition to convert your voice into text, making it easier to have coaching conversations.";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
