@@ -15,10 +15,12 @@ struct PinnedView: View {
     private let pinnedService = PinnedMessageService.shared
     private let supabase = SupabaseManager.shared.client
     @ObservedObject private var pinnedManager = PinnedMessagesManager.shared
+    @ObservedObject private var supabaseManager = SupabaseManager.shared
     @State private var pinnedMessages: [PinnedMessage] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
     @State private var realtimeTask: Task<Void, Never>?
+    @State private var selectedPerson: Person? = nil
 
     var body: some View {
         Group {
@@ -38,12 +40,8 @@ struct PinnedView: View {
         }
         .navigationTitle("Pins")
         .navigationBarTitleDisplayMode(.large)
-        .navigationDestination(for: ConversationIdentifier.self) { conversation in
-            ConversationDetailViewWrapper(
-                messageId: conversation.messageId,
-                personId: conversation.personId,
-                conversationId: conversation.conversationId
-            )
+        .navigationDestination(item: $selectedPerson) { person in
+            ConversationView(person: person)
         }
         .task {
             await loadPinnedMessages()
@@ -72,15 +70,16 @@ struct PinnedView: View {
         List {
             ForEach(pinnedMessages) { pin in
                 Group {
-                    if let personId = pin.personId, let conversationId = pin.conversationId {
-                        // Message has conversation - enable navigation with scrolling to message
-                        NavigationLink(value: ConversationIdentifier(
-                            messageId: pin.messageId,
-                            personId: personId,
-                            conversationId: conversationId
-                        )) {
+                    if let personId = pin.personId, pin.conversationId != nil {
+                        // Message has conversation - enable navigation to actual conversation
+                        Button(action: {
+                            Task {
+                                await navigateToPinnedConversation(personId: personId)
+                            }
+                        }) {
                             PinnedMessageRow(pinnedMessage: pin)
                         }
+                        .buttonStyle(.plain)
                     } else {
                         // Old message without conversation - show but no navigation
                         PinnedMessageRow(pinnedMessage: pin)
@@ -156,6 +155,31 @@ struct PinnedView: View {
                     await loadPinnedMessages()
                 }
             }
+        }
+    }
+
+    private func navigateToPinnedConversation(personId: UUID) async {
+        // Try to find person in cache first
+        let cachedPeople = await CacheManager.shared.getCachedPeople()
+        if let cachedPerson = cachedPeople.first(where: { $0.id == personId }) {
+            await MainActor.run {
+                selectedPerson = cachedPerson
+            }
+            return
+        }
+
+        // If not in cache, fetch from database
+        do {
+            let people = try await supabaseManager.people.fetchPeople()
+            if let person = people.first(where: { $0.id == personId }) {
+                await MainActor.run {
+                    selectedPerson = person
+                }
+            } else {
+                print("❌ Person not found for pinned message: \(personId)")
+            }
+        } catch {
+            print("❌ Error fetching person for navigation: \(error)")
         }
     }
 }
@@ -255,124 +279,6 @@ struct PinnedMessageRow: View {
         } else {
             return "Just now"
         }
-    }
-}
-
-// MARK: - Wrapper View
-
-struct ConversationDetailViewWrapper: View {
-    let messageId: UUID
-    let personId: UUID
-    let conversationId: UUID
-
-    @State private var conversation: Conversation?
-    @State private var person: Person?
-    @State private var messages: [Message] = []
-    @State private var isLoading = true
-    @State private var errorMessage: String?
-
-    var body: some View {
-        Group {
-            if isLoading {
-                ProgressView("Loading conversation...")
-            } else if let error = errorMessage {
-                ContentUnavailableView(
-                    "Error Loading Conversation",
-                    systemImage: "exclamationmark.triangle",
-                    description: Text(error)
-                )
-            } else if let conversation = conversation, let person = person {
-                ConversationDetailView(
-                    conversation: conversation,
-                    person: person,
-                    messages: messages,
-                    highlightedMessageId: messageId
-                )
-            }
-        }
-        .task {
-            await loadConversationData()
-        }
-    }
-
-    private func loadConversationData() async {
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            let supabase = SupabaseManager.shared.client
-
-            // Fetch conversation
-            let convData = try await supabase
-                .from("conversations")
-                .select("*")
-                .eq("id", value: conversationId.uuidString)
-                .execute()
-                .data
-
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let conversations = try decoder.decode([Conversation].self, from: convData)
-
-            guard let conv = conversations.first else {
-                errorMessage = "Conversation not found"
-                isLoading = false
-                return
-            }
-
-            // Fetch person
-            let personData = try await supabase
-                .from("people")
-                .select("*")
-                .eq("id", value: personId.uuidString)
-                .execute()
-                .data
-
-            let people = try decoder.decode([Person].self, from: personData)
-
-            guard let pers = people.first else {
-                errorMessage = "Person not found"
-                isLoading = false
-                return
-            }
-
-            // Fetch all messages in conversation
-            let messagesData = try await supabase
-                .from("messages")
-                .select("*")
-                .eq("conversation_id", value: conversationId.uuidString)
-                .order("created_at", ascending: true)
-                .execute()
-                .data
-
-            let msgs = try decoder.decode([Message].self, from: messagesData)
-
-            conversation = conv
-            person = pers
-            messages = msgs
-            isLoading = false
-
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
-            print("❌ Error loading conversation data: \(error)")
-        }
-    }
-}
-
-// MARK: - Helper Types
-
-struct ConversationIdentifier: Identifiable, Hashable {
-    let id: UUID
-    let messageId: UUID
-    let personId: UUID
-    let conversationId: UUID
-
-    init(messageId: UUID, personId: UUID, conversationId: UUID) {
-        self.id = conversationId
-        self.messageId = messageId
-        self.personId = personId
-        self.conversationId = conversationId
     }
 }
 

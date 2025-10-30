@@ -144,8 +144,6 @@ struct PeopleListView: View {
     @ViewBuilder
     private func destinationView(for destination: NavigationDestination) -> some View {
         switch destination {
-        case .pinnedConversation(let messageId, let personId, let conversationId):
-            ConversationDetailViewWrapper(messageId: messageId, personId: personId, conversationId: conversationId)
         case .person(let person):
             ConversationView(person: person)
         }
@@ -447,7 +445,6 @@ struct PersonEditRowView: View {
 // MARK: - Navigation Destination Types
 
 enum NavigationDestination: Hashable {
-    case pinnedConversation(messageId: UUID, personId: UUID, conversationId: UUID)
     case person(Person)
 }
 
